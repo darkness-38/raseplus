@@ -5,8 +5,8 @@ import AuthGuard from '@/components/AuthGuard';
 import Navbar from '@/components/Navbar';
 import MobileNav from '@/components/MobileNav';
 
-const noShellRoutes = ['/login'];
-const noNavRoutes = ['/login'];
+const noShellRoutes: string[] = [];
+const noNavRoutes: string[] = [];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();

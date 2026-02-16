@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { useEffect, useState } from 'react';
 
 const navItems = [
@@ -14,7 +13,6 @@ const navItems = [
 
 export default function Navbar() {
     const pathname = usePathname();
-    const { user, logout } = useAuth(); // Assuming auth context provides these
     const [isScrolled, setIsScrolled] = useState(false);
 
     // Scroll effect for transparent -> solid background
@@ -79,11 +77,12 @@ export default function Navbar() {
                 </div>
 
                 {/* Profile / Logout */}
-                <div className="navbar__profile" onClick={() => logout()}>
+                {/* Profile / Logout removed as per "no accounts" request */}
+                {/* <div className="navbar__profile" onClick={() => logout()}>
                     <div className="navbar__avatar" title={user?.displayName || 'User'}>
                         {user?.displayName?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                </div>
+                </div> */}
             </div>
         </nav>
     );
