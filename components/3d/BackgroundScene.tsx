@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, RootState } from '@react-three/fiber';
 import { Float, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
@@ -9,7 +9,7 @@ import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postpro
 function GlassShard({ position, rotation, scale, color }: any) {
     const mesh = useRef<THREE.Mesh>(null);
 
-    useFrame((state) => {
+    useFrame((state: RootState) => {
         if (mesh.current) {
             mesh.current.rotation.x += 0.002;
             mesh.current.rotation.y += 0.003;
