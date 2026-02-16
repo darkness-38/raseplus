@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthLayout from '@/components/AuthLayout';
 
+import LiquidInput from '@/components/ui/LiquidInput';
+import NeonButton from '@/components/ui/NeonButton';
+
 export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -54,151 +57,112 @@ export default function RegisterPage() {
             <AuthLayout>
                 <h3 style={{
                     color: '#fff',
-                    marginBottom: '24px',
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    textAlign: 'center'
+                    marginBottom: '40px',
+                    fontSize: '32px',
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    letterSpacing: '-1px',
+                    textShadow: '0 0 20px rgba(0,255,255,0.4)'
                 }}>
-                    Create an account
+                    JOIN THE NETWORK
                 </h3>
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                    <LiquidInput
+                        label="EMAIL DESTINATION"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
 
-                    <div className="input-group">
-                        <input
-                            type="email"
-                            className="register-input"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            placeholder="Type"
-                        />
-                        <label className="input-label" style={{ display: email ? 'none' : 'block' }}>Email</label>
-                    </div>
-
-                    <div className="input-group">
-                        <input
-                            type="password"
-                            className="register-input"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            placeholder="Type"
-                            minLength={6}
-                        />
-                        <label className="input-label" style={{ display: password ? 'none' : 'block' }}>Password</label>
-                    </div>
+                    <LiquidInput
+                        label="SECURE KEY"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                    />
 
                     {error && (
-                        <div style={{ color: '#ff4d4f', fontSize: '14px', textAlign: 'center' }}>
+                        <div style={{
+                            color: '#ff0055',
+                            fontSize: '14px',
+                            textAlign: 'center',
+                            marginBottom: '20px',
+                            background: 'rgba(255,0,85,0.1)',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,0,85,0.3)'
+                        }}>
                             {error}
                         </div>
                     )}
 
-                    <button
-                        type="submit"
-                        className="register-btn"
-                        disabled={loading}
-                    >
-                        {loading ? 'CREATING ACCOUNT...' : 'AGREE & CONTINUE'}
-                    </button>
+                    <NeonButton type="submit" disabled={loading}>
+                        {loading ? 'PROCESSING...' : 'INITIATE UPLINK'}
+                    </NeonButton>
 
-                    <div style={{ fontSize: '11px', color: '#cacaca', lineHeight: '1.5', marginTop: '8px' }}>
-                        By clicking Agree & Continue, you agree to our Subscriber Agreement and acknowledge that you have read our Privacy Policy.
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.5', marginTop: '16px', textAlign: 'center' }}>
+                        By clicking INITIATE UPLINK, you agree to our Digital Subscriber Agreement.
                     </div>
                 </form>
 
-                <div className="divider">
-                    <span>OR</span>
+                <div className="divider" style={{ margin: '32px 0' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', fontSize: '10px' }}>OR AUTHENTICATE WITH</span>
                 </div>
 
                 <div className="social-login">
                     <button
                         type="button"
                         onClick={handleGoogleLogin}
-                        className="social-btn"
+                        className="glass-social-btn"
                         disabled={loading}
                     >
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20" />
-                        <span>Sign up with Google</span>
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="24" height="24" />
+                        <span>Google Graph</span>
                     </button>
                 </div>
 
-                <div style={{ marginTop: '24px', color: '#cacaca', fontSize: '14px', textAlign: 'center' }}>
-                    Already have an account? <Link href="/login" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600 }}>Log In.</Link>
+                <div style={{ marginTop: '40px', color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', letterSpacing: '1px' }}>
+                    ALREADY CONNECTED? <Link href="/login" style={{ color: '#00ffff', textDecoration: 'none', fontWeight: 600, textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>RESUME SESSION</Link>
                 </div>
             </AuthLayout>
 
             <style jsx>{`
-                .input-group {
-                    position: relative;
+                .glass-social-btn {
                     width: 100%;
-                }
-                
-                .register-input {
-                    width: 100%;
-                    height: 52px;
-                    background: #31343e;
-                    border: 1px solid transparent;
-                    border-radius: 4px;
-                    padding: 0 16px;
-                    color: white;
-                    font-size: 16px;
-                    outline: none;
-                    transition: all 0.2s;
-                }
-
-                .register-input:focus {
-                    background: #4a4d56;
-                    border-bottom: 2px solid #fff;
-                }
-
-                .input-label {
-                    position: absolute;
-                    top: 50%;
-                    left: 16px;
-                    transform: translateY(-50%);
-                    color: #8f9296;
-                    pointer-events: none;
-                    transition: all 0.2s;
-                }
-                
-                .register-input:focus + .input-label,
-                .register-input:not(:placeholder-shown) + .input-label {
-                    display: none;
-                }
-
-                .register-btn {
-                    width: 100%;
-                    height: 52px;
-                    background: #0063e5;
-                    color: #f9f9f9;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 16px;
-                    font-weight: 700;
-                    letter-spacing: 1.5px;
+                    height: 56px;
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #fff;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 50px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    letter-spacing: 1px;
                     text-transform: uppercase;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 12px;
                     cursor: pointer;
-                    transition: background 0.2s;
-                    margin-top: 8px;
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(10px);
                 }
 
-                .register-btn:hover {
-                    background: #0483ee;
-                }
-
-                .register-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
+                .glass-social-btn:hover {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: #fff;
+                    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+                    transform: translateY(-2px);
                 }
 
                 .divider {
-                    margin: 24px 0;
                     display: flex;
                     align-items: center;
-                    color: #8f9296;
-                    font-size: 12px;
+                    justify-content: center;
+                    position: relative;
                 }
                 
                 .divider::before,
@@ -206,38 +170,11 @@ export default function RegisterPage() {
                     content: '';
                     flex: 1;
                     height: 1px;
-                    background: #31343e;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
                 }
 
                 .divider span {
-                    padding: 0 12px;
-                }
-
-                .social-login {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .social-btn {
-                    width: 100%;
-                    height: 52px;
-                    background: white;
-                    color: black;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 12px;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-
-                .social-btn:hover {
-                    background: #e6e6e6;
+                    padding: 0 16px;
                 }
             `}</style>
         </>

@@ -9,7 +9,9 @@ import BrandTiles from '@/components/BrandTiles';
 const ANIME_LIBRARY_ID = '0c41907140d802bb58430fed7e2cd79e';
 const SERIES_LIBRARY_ID = '3148cf0701708325a446ec1751b2b64e';
 
-export default function HomePage() {
+import LandingPage from '@/components/LandingPage';
+
+function Dashboard() {
   const { jellyfinAuth } = useAuth();
   const [heroItems, setHeroItems] = useState<BaseItem[]>([]);
   const [latestMovies, setLatestMovies] = useState<BaseItem[]>([]);
@@ -118,4 +120,22 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+export default function HomePage() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="loading-state" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#040714' }}>
+        <div className="loading-spinner"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
+
+  return <Dashboard />;
 }

@@ -1,5 +1,11 @@
 'use client';
+
 import { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// Dynamically import Three.js scene to avoid SSR issues
+const BackgroundScene = dynamic(() => import('@/components/3d/BackgroundScene'), { ssr: false });
 
 interface AuthLayoutProps {
     children: ReactNode;
@@ -8,20 +14,26 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children }: AuthLayoutProps) {
     return (
         <div className="auth-container">
-            {/* Background Layers */}
-            <div className="auth-background-layer-1"></div>
-            <div className="auth-background-layer-2"></div>
+            <BackgroundScene />
 
             {/* Content */}
-            <div className="auth-content">
-                <div className="auth-logo-container">
-                    <img src="/assets/logo.png" alt="Rase+" className="auth-logo" />
-                </div>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    className="auth-content"
+                    initial={{ opacity: 0, scale: 0.9, rotateX: 10 }}
+                    animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, rotateX: -10 }}
+                    transition={{ duration: 0.6, type: "spring", bounce: 0.4 }}
+                >
+                    <div className="auth-logo-container">
+                        <img src="/assets/logo.png" alt="Rase+" className="auth-logo" />
+                    </div>
 
-                <div className="auth-card">
-                    {children}
-                </div>
-            </div>
+                    <div className="auth-card">
+                        {children}
+                    </div>
+                </motion.div>
+            </AnimatePresence>
 
             <style jsx global>{`
                 .auth-container {
@@ -32,78 +44,58 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background-color: #040714;
+                    background-color: #000;
                     font-family: 'Inter', sans-serif;
-                }
-
-                /* Layer 1: Deep Blue Gradient */
-                .auth-background-layer-1 {
-                    position: absolute;
-                    inset: 0;
-                    background: radial-gradient(circle at 50% 0%, #1b2845 0%, #040714 80%);
-                    z-index: 0;
-                }
-
-                /* Layer 2: Subtle Starfield Effect (optional, using CSS for now) */
-                .auth-background-layer-2 {
-                    position: absolute;
-                    inset: 0;
-                    background-image: 
-                        radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-                        radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-                        radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-                    background-size: 550px 550px, 350px 350px, 250px 250px;
-                    background-position: 0 0, 40px 60px, 130px 270px;
-                    opacity: 0.3;
-                    z-index: 1;
-                    animation: starMove 100s linear infinite;
-                }
-
-                @keyframes starMove {
-                    from { transform: translateY(0); }
-                    to { transform: translateY(-550px); }
+                    perspective: 1200px; /* Crucial for 3D flip */
                 }
 
                 .auth-content {
                     position: relative;
                     z-index: 10;
                     width: 100%;
-                    max-width: 400px;
-                    padding: 20px;
+                    max-width: 480px;
+                    padding: 40px;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
+                    /* Glass Card Container Style */
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(20px) saturate(180%);
+                    -webkit-backdrop-filter: blur(20px) saturate(180%);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 24px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,255,255,0.05);
+                    transform-style: preserve-3d;
                 }
 
                 .auth-logo-container {
-                    margin-bottom: 32px;
+                    margin-bottom: 40px;
                     width: 100%;
                     display: flex;
                     justify-content: center;
+                    transform: translateZ(50px); /* Parallax depth */
                 }
 
                 .auth-logo {
-                    max-width: 180px;
+                    max-width: 200px;
                     height: auto;
-                    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+                    filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
                 }
 
                 .auth-card {
                     width: 100%;
-                    background: rgba(14, 17, 27, 0.6);
-                    backdrop-filter: blur(20px);
-                    -webkit-backdrop-filter: blur(20px);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 12px;
-                    padding: 40px 32px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-                    transition: transform 0.3s ease;
+                    transform: translateZ(20px);
                 }
 
-                .auth-card:hover {
-                    border-color: rgba(255, 255, 255, 0.2);
+                @media (max-width: 768px) {
+                    .auth-content {
+                        padding: 24px;
+                        margin: 20px;
+                        max-width: 100%;
+                    }
                 }
             `}</style>
         </div>
     );
 }
+

@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-three/postprocessing": "^3.0.4",
     "firebase": "^12.9.0",
     "hls.js": "^1.6.15",
     "next": "16.1.6",
+    "postprocessing": "^6.38.2",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

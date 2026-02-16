@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthLayout from '@/components/AuthLayout';
+import LiquidInput from '@/components/ui/LiquidInput';
+import NeonButton from '@/components/ui/NeonButton';
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');
@@ -50,149 +52,108 @@ export default function LoginPage() {
             <AuthLayout>
                 <h3 style={{
                     color: '#fff',
-                    marginBottom: '24px',
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    textAlign: 'center'
+                    marginBottom: '40px',
+                    fontSize: '32px',
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    letterSpacing: '-1px',
+                    textShadow: '0 0 20px rgba(0,255,255,0.4)'
                 }}>
-                    Login with your email
+                    ENTER RASE+
                 </h3>
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div className="input-group">
-                        <input
-                            type="text"
-                            className="login-input"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                            placeholder="Type" // Placeholder required for :placeholder-shown trick if we used one, but simple is fine
-                        />
-                        <label className="input-label" style={{ display: username ? 'none' : 'block' }}>Email</label>
-                    </div>
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
 
-                    <div className="input-group">
-                        <input
-                            type="password"
-                            className="login-input"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            placeholder="Type"
-                        />
-                        <label className="input-label" style={{ display: password ? 'none' : 'block' }}>Password</label>
-                    </div>
+                    <LiquidInput
+                        label="EMAIL IDENTITY"
+                        type="email"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                    />
+
+                    <LiquidInput
+                        label="ACCESS CODE"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
 
                     {error && (
-                        <div style={{ color: '#ff4d4f', fontSize: '14px', textAlign: 'center' }}>
+                        <div style={{
+                            color: '#ff0055',
+                            fontSize: '14px',
+                            textAlign: 'center',
+                            marginBottom: '20px',
+                            background: 'rgba(255,0,85,0.1)',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,0,85,0.3)'
+                        }}>
                             {error}
                         </div>
                     )}
 
-                    <button
-                        type="submit"
-                        className="login-btn"
-                        disabled={loading}
-                    >
-                        {loading ? 'LOGGING IN...' : 'LOG IN'}
-                    </button>
+                    <NeonButton type="submit" disabled={loading}>
+                        {loading ? 'INITIALIZING...' : 'ENTER SYSTEM'}
+                    </NeonButton>
                 </form>
 
-                <div className="divider">
-                    <span>OR</span>
+                <div className="divider" style={{ margin: '32px 0' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', fontSize: '10px' }}>OR AUTHENTICATE WITH</span>
                 </div>
 
                 <div className="social-login">
                     <button
                         type="button"
                         onClick={handleGoogleLogin}
-                        className="social-btn"
+                        className="glass-social-btn"
                         disabled={loading}
                     >
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20" />
-                        <span>Sign in with Google</span>
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="24" height="24" />
+                        <span>Google Graph</span>
                     </button>
                 </div>
 
-                <div style={{ marginTop: '24px', color: '#cacaca', fontSize: '14px', textAlign: 'center' }}>
-                    New to Rase+? <Link href="/register" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600 }}>Sign up now.</Link>
+                <div style={{ marginTop: '40px', color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', letterSpacing: '1px' }}>
+                    NO ACCESS? <Link href="/register" style={{ color: '#00ffff', textDecoration: 'none', fontWeight: 600, textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>INITIATE SEQUENCE</Link>
                 </div>
-            </AuthLayout>
+            </AuthLayout >
 
             <style jsx>{`
-                .input-group {
-                    position: relative;
+                .glass-social-btn {
                     width: 100%;
-                }
-                
-                .login-input {
-                    width: 100%;
-                    height: 52px;
-                    background: #31343e;
-                    border: 1px solid transparent;
-                    border-radius: 4px;
-                    padding: 0 16px;
-                    color: white;
-                    font-size: 16px;
-                    outline: none;
-                    transition: all 0.2s;
-                }
-
-                .login-input:focus {
-                    background: #4a4d56;
-                    border-bottom: 2px solid #fff;
-                }
-
-                .input-label {
-                    position: absolute;
-                    top: 50%;
-                    left: 16px;
-                    transform: translateY(-50%);
-                    color: #8f9296;
-                    pointer-events: none;
-                    transition: all 0.2s;
-                }
-                
-                .login-input:focus + .input-label,
-                .login-input:not(:placeholder-shown) + .input-label {
-                    display: none; /* Simple behavior matching Disney+ somewhat or just hiding */
-                }
-
-                /* Actually Disney+ uses floating labels, but for simplicitly we can just use placeholders or this hide method */
-                /* Let's fix the label logic in JSX to simple placeholders if preferred, but user asked for "design as it is" */
-                /* The provided framer design had simple inputs. */
-
-                .login-btn {
-                    width: 100%;
-                    height: 52px;
-                    background: #0063e5;
-                    color: #f9f9f9;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 16px;
-                    font-weight: 700;
-                    letter-spacing: 1.5px;
+                    height: 56px;
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #fff;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 50px; /* Pill shape */
+                    font-size: 14px;
+                    font-weight: 600;
+                    letter-spacing: 1px;
                     text-transform: uppercase;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 12px;
                     cursor: pointer;
-                    transition: background 0.2s;
-                    margin-top: 8px;
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(10px);
                 }
 
-                .login-btn:hover {
-                    background: #0483ee;
-                }
-
-                .login-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
+                .glass-social-btn:hover {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-color: #fff;
+                    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+                    transform: translateY(-2px);
                 }
 
                 .divider {
-                    margin: 24px 0;
                     display: flex;
                     align-items: center;
-                    color: #8f9296;
-                    font-size: 12px;
+                    justify-content: center;
+                    position: relative;
                 }
                 
                 .divider::before,
@@ -200,38 +161,11 @@ export default function LoginPage() {
                     content: '';
                     flex: 1;
                     height: 1px;
-                    background: #31343e;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
                 }
 
                 .divider span {
-                    padding: 0 12px;
-                }
-
-                .social-login {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .social-btn {
-                    width: 100%;
-                    height: 52px;
-                    background: white;
-                    color: black;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 12px;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-
-                .social-btn:hover {
-                    background: #e6e6e6;
+                    padding: 0 16px;
                 }
             `}</style>
         </>
