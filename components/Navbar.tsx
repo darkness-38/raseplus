@@ -79,9 +79,9 @@ export default function Navbar() {
                 </div>
 
                 {/* Profile / Logout */}
-                <div className="navbar__profile">
-                    <div className="navbar__avatar" title={user?.Name || 'User'} onClick={logout}>
-                        {user?.Name?.charAt(0).toUpperCase() || 'U'}
+                <div className="navbar__profile" onClick={() => logout()}>
+                    <div className="navbar__avatar" title={user?.displayName || 'User'}>
+                        {user?.displayName?.charAt(0).toUpperCase() || 'U'}
                     </div>
                 </div>
             </div>

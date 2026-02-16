@@ -21,6 +21,7 @@ const JELLYFIN_PASS = 'guest';
 interface AuthContextType {
     isAuthenticated: boolean;
     firebaseUser: FirebaseUser | null;
+    user: FirebaseUser | null;
     jellyfinAuth: JellyfinAuth | null;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -32,6 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
     isAuthenticated: false,
     firebaseUser: null,
+    user: null,
     jellyfinAuth: null,
     login: async () => ({ success: false }),
     register: async () => ({ success: false }),
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, firebaseUser, jellyfinAuth, login, register, loginWithGoogle, logout, isLoading }}>
+        <AuthContext.Provider value={{ isAuthenticated, firebaseUser, user: firebaseUser, jellyfinAuth, login, register, loginWithGoogle, logout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
