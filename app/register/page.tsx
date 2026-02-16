@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthLayout from '@/components/AuthLayout';
 
-export default function LoginPage() {
-    const [username, setUsername] = useState('');
+export default function RegisterPage() {
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login, loginWithGoogle } = useAuth();
+    const { register, loginWithGoogle } = useAuth();
     const router = useRouter();
 
     const handleGoogleLogin = async () => {
@@ -36,10 +36,14 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            await login(username, password);
-            router.push('/');
+            const res = await register(email, password);
+            if (res.success) {
+                router.push('/');
+            } else {
+                setError(res.error || 'Registration failed');
+            }
         } catch (err: any) {
-            setError('Login failed. Please check your credentials.');
+            setError('An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -55,30 +59,32 @@ export default function LoginPage() {
                     fontWeight: 600,
                     textAlign: 'center'
                 }}>
-                    Login with your email
+                    Create an account
                 </h3>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
                     <div className="input-group">
                         <input
-                            type="text"
-                            className="login-input"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            type="email"
+                            className="register-input"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             required
-                            placeholder="Type" // Placeholder required for :placeholder-shown trick if we used one, but simple is fine
+                            placeholder="Type"
                         />
-                        <label className="input-label" style={{ display: username ? 'none' : 'block' }}>Email</label>
+                        <label className="input-label" style={{ display: email ? 'none' : 'block' }}>Email</label>
                     </div>
 
                     <div className="input-group">
                         <input
                             type="password"
-                            className="login-input"
+                            className="register-input"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             placeholder="Type"
+                            minLength={6}
                         />
                         <label className="input-label" style={{ display: password ? 'none' : 'block' }}>Password</label>
                     </div>
@@ -91,11 +97,15 @@ export default function LoginPage() {
 
                     <button
                         type="submit"
-                        className="login-btn"
+                        className="register-btn"
                         disabled={loading}
                     >
-                        {loading ? 'LOGGING IN...' : 'LOG IN'}
+                        {loading ? 'CREATING ACCOUNT...' : 'AGREE & CONTINUE'}
                     </button>
+
+                    <div style={{ fontSize: '11px', color: '#cacaca', lineHeight: '1.5', marginTop: '8px' }}>
+                        By clicking Agree & Continue, you agree to our Subscriber Agreement and acknowledge that you have read our Privacy Policy.
+                    </div>
                 </form>
 
                 <div className="divider">
@@ -110,12 +120,12 @@ export default function LoginPage() {
                         disabled={loading}
                     >
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="20" height="20" />
-                        <span>Sign in with Google</span>
+                        <span>Sign up with Google</span>
                     </button>
                 </div>
 
                 <div style={{ marginTop: '24px', color: '#cacaca', fontSize: '14px', textAlign: 'center' }}>
-                    New to Rase+? <Link href="/register" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600 }}>Sign up now.</Link>
+                    Already have an account? <Link href="/login" style={{ color: '#fff', textDecoration: 'none', fontWeight: 600 }}>Log In.</Link>
                 </div>
             </AuthLayout>
 
@@ -125,7 +135,7 @@ export default function LoginPage() {
                     width: 100%;
                 }
                 
-                .login-input {
+                .register-input {
                     width: 100%;
                     height: 52px;
                     background: #31343e;
@@ -138,7 +148,7 @@ export default function LoginPage() {
                     transition: all 0.2s;
                 }
 
-                .login-input:focus {
+                .register-input:focus {
                     background: #4a4d56;
                     border-bottom: 2px solid #fff;
                 }
@@ -153,16 +163,12 @@ export default function LoginPage() {
                     transition: all 0.2s;
                 }
                 
-                .login-input:focus + .input-label,
-                .login-input:not(:placeholder-shown) + .input-label {
-                    display: none; /* Simple behavior matching Disney+ somewhat or just hiding */
+                .register-input:focus + .input-label,
+                .register-input:not(:placeholder-shown) + .input-label {
+                    display: none;
                 }
 
-                /* Actually Disney+ uses floating labels, but for simplicitly we can just use placeholders or this hide method */
-                /* Let's fix the label logic in JSX to simple placeholders if preferred, but user asked for "design as it is" */
-                /* The provided framer design had simple inputs. */
-
-                .login-btn {
+                .register-btn {
                     width: 100%;
                     height: 52px;
                     background: #0063e5;
@@ -178,11 +184,11 @@ export default function LoginPage() {
                     margin-top: 8px;
                 }
 
-                .login-btn:hover {
+                .register-btn:hover {
                     background: #0483ee;
                 }
 
-                .login-btn:disabled {
+                .register-btn:disabled {
                     opacity: 0.5;
                     cursor: not-allowed;
                 }
