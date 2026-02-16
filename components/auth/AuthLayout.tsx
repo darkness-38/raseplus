@@ -48,12 +48,7 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
 
             {/* Content Container - Left Aligned */}
             <div className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-12 lg:px-16">
-                <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="max-w-md w-full"
-                >
+                <div className="max-w-md w-full">
                     <div className="mb-8">
                         <h1 className="text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-lg">
                             {title}
@@ -66,7 +61,7 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
                     <div className="backdrop-blur-md bg-black/40 border border-white/10 p-8 rounded-2xl shadow-2xl ring-1 ring-white/10">
                         {children}
                     </div>
-                </motion.div>
+                </div>
             </div>
         </div>
     );
