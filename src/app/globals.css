@@ -1,0 +1,247 @@
+@import "tailwindcss";
+
+/* ─── Unified Rase+ Design System ─── */
+@theme inline {
+  --color-background: #00061a;
+  --color-foreground: #f0f2f8;
+  --color-surface: #000d2e;
+  --color-surface-light: #0a1a3a;
+  --color-accent: #0DD6E8;
+  --color-accent-hover: #04C7F4;
+  --color-accent-soft: rgba(13, 214, 232, 0.12);
+  --color-muted: #7b8db5;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-glow: rgba(13, 214, 232, 0.25);
+  --font-sans: var(--font-dm-sans), var(--font-inter);
+}
+
+/* ─── Reset & Base ─── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0a1a3a transparent;
+}
+
+html {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ─── Glassmorphism ─── */
+.glass {
+  background: rgba(0, 6, 26, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-strong {
+  background: rgba(0, 6, 26, 0.88);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0a1a3a;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #132850;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── Gradients ─── */
+.hero-gradient {
+  background: linear-gradient(to top,
+      #00061a 0%,
+      rgba(0, 6, 26, 0.6) 40%,
+      transparent 70%);
+}
+
+.hero-gradient-left {
+  background: linear-gradient(to right,
+      #00061a 0%,
+      rgba(0, 6, 26, 0.65) 35%,
+      transparent 100%);
+}
+
+.backdrop-gradient {
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(0, 6, 26, 0.5) 40%,
+      #00061a 100%);
+}
+
+/* ─── Animations ─── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--color-surface) 25%,
+      var(--color-surface-light) 50%,
+      var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ─── Cards ─── */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.03) 45%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 55%,
+      transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card-shine:hover::after {
+  opacity: 1;
+}
+
+/* ─── Player ─── */
+.player-overlay {
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.9) 0%,
+      transparent 40%,
+      transparent 70%,
+      rgba(0, 0, 0, 0.6) 100%);
+}
+
+/* ─── Cyan Glow Effects ─── */
+.cyan-glow {
+  box-shadow: 0 0 30px rgba(13, 214, 232, 0.15),
+    0 0 60px rgba(13, 214, 232, 0.08);
+}
+
+.cyan-glow-strong {
+  box-shadow: 0 0 40px rgba(13, 214, 232, 0.3),
+    0 0 80px rgba(13, 214, 232, 0.15);
+}
+
+/* Legacy aliases */
+.blue-glow {
+  box-shadow: 0 0 30px rgba(13, 214, 232, 0.15), 0 0 60px rgba(13, 214, 232, 0.08);
+}
+
+.blue-glow-strong {
+  box-shadow: 0 0 40px rgba(13, 214, 232, 0.3), 0 0 80px rgba(13, 214, 232, 0.15);
+}
+
+/* ─── Primary CTA Button ─── */
+.btn-primary {
+  background-color: #0DD6E8;
+  box-shadow: inset 0px 4px 16px 0px rgba(194, 255, 255, 1);
+  border-radius: 100px;
+  color: rgba(0, 6, 26, 1);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.03);
+  box-shadow: inset 0px 4px 16px 0px rgba(194, 255, 255, 1), 0 0 30px rgba(13, 214, 232, 0.3);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+/* ─── Snap Scroll ─── */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* ─── Font Families ─── */
+.font-heading {
+  font-family: 'Satoshi', 'DM Sans', var(--font-sans), sans-serif;
+}
+
+.font-body {
+  font-family: 'DM Sans', var(--font-sans), sans-serif;
+}
