@@ -1,4 +1,4 @@
-const JELLYFIN_BASE = "http://192.168.1.50:8096";
+const JELLYFIN_BASE = "https://app.iloveteto.com";
 const JELLYFIN_USER = "rase";
 const JELLYFIN_PASS = "rase";
 
