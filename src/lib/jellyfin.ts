@@ -297,6 +297,23 @@ class JellyfinService {
         return `${JELLYFIN_BASE}/Videos/${itemId}/stream?Static=true&api_key=${this.accessToken}`;
     }
 
+    getDownloadUrl(itemId: string, maxBitrate: number = 8000000): string {
+        const params = new URLSearchParams({
+            Static: "true",
+            Container: "mp4",
+            VideoCodec: "h264",
+            AudioCodec: "aac",
+            VideoBitrate: String(maxBitrate),
+            AudioBitrate: "320000",
+            api_key: this.accessToken!,
+            // Add a meaningful filename for the download if possible, though Jellyfin might handle this based on item metadata.
+            // Jellyfin usually sets Content-Disposition based on the item name if we download via /Items/{Id}/Download,
+            // but for transcoding/limiting bitrate we use /Videos/{Id}/stream.
+            // We can try adding "filename" param, but it might not be respected by this endpoint.
+        });
+        return `${JELLYFIN_BASE}/Videos/${itemId}/stream.mp4?${params}`;
+    }
+
     getImageUrl(
         itemId: string,
         type: "Primary" | "Backdrop" | "Logo" = "Primary",

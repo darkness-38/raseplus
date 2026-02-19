@@ -212,6 +212,22 @@ export default function ItemDetailPage({ params }: PageProps) {
                                 }
                             </button>
                         )}
+                        {isMovie && (
+                            <button
+                                onClick={() => {
+                                    const encodedUrl = encodeURIComponent(jellyfin.getDownloadUrl(item.Id));
+                                    const filename = encodeURIComponent(`${item.Name}.mp4`);
+                                    window.open(`/api/download?url=${encodedUrl}&filename=${filename}`, "_blank");
+                                }}
+                                className="btn-secondary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden bg-white/10 hover:bg-white/20 transition-colors rounded-lg"
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 9.75l-3 3m0 0l3 3m-3-3l3-3M3 13.5l6-3 6 3" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v13.5" />
+                                </svg>
+                                Download
+                            </button>
+                        )}
                         {isSeries && (
                             <button
                                 onClick={() => {
@@ -403,11 +419,28 @@ export default function ItemDetailPage({ params }: PageProps) {
                                                     <h4 className="text-xs sm:text-sm font-semibold text-white truncate transition-colors group-hover:text-[#0DD6E8]">
                                                         {ep.Name}
                                                     </h4>
-                                                    {ep.RunTimeTicks && (
-                                                        <span className="text-[10px] sm:text-xs ml-2 flex-shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>
-                                                            {formatRuntime(ep.RunTimeTicks)}
-                                                        </span>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const encodedUrl = encodeURIComponent(jellyfin.getDownloadUrl(ep.Id));
+                                                                const filename = encodeURIComponent(`${item.Name} - S${ep.ParentIndexNumber ?? 1}E${ep.IndexNumber ?? 1} - ${ep.Name}.mp4`);
+                                                                window.open(`/api/download?url=${encodedUrl}&filename=${filename}`, "_blank");
+                                                            }}
+                                                            className="p-1.5 rounded-full hover:bg-white/20 text-white/60 hover:text-white transition-colors"
+                                                            title="Download Episode"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 9.75l-3 3m0 0l3 3m-3-3l3-3M3 13.5l6-3 6 3" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v13.5" />
+                                                            </svg>
+                                                        </button>
+                                                        {ep.RunTimeTicks && (
+                                                            <span className="text-[10px] sm:text-xs text-white/30 whitespace-nowrap">
+                                                                {formatRuntime(ep.RunTimeTicks)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <p className="text-[11px] sm:text-xs line-clamp-2 leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
                                                     {ep.Overview ?? "No description available."}
