@@ -87,7 +87,7 @@ export default function SeriesPage() {
                 transition={{ delay: 0.2 }}
                 className="mt-10 sm:mt-12 px-4 sm:px-6 lg:px-12"
             >
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-4 sm:mb-6 font-heading">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 font-heading">
                     {cfg.browse.allSeriesTitle}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
