@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 /* ─────────────────── DESIGN TOKENS ─────────────────── */
 const COLORS = {
@@ -176,6 +177,7 @@ export default function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const { config: cfg } = useSiteConfig();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 30);
@@ -197,7 +199,7 @@ export default function LandingPage() {
   return (
     <div
       className="min-h-screen text-white overflow-x-hidden"
-      style={{ backgroundColor: COLORS.bg, fontFamily: "'DM Sans', 'Inter', sans-serif" }}
+      style={{ backgroundColor: COLORS.bg }}
     >
       {/* ═══════════════════════ NAVBAR ═══════════════════════ */}
       <nav
@@ -213,8 +215,8 @@ export default function LandingPage() {
         <Link href="/" className="flex items-center gap-0.5">
           <div className="relative h-8 w-24 sm:h-9 sm:w-28">
             <Image
-              src="/logo.png"
-              alt="Rase+"
+              src={cfg.logoUrl}
+              alt={cfg.siteName}
               fill
               className="object-contain"
               priority
@@ -236,7 +238,7 @@ export default function LandingPage() {
               key={link}
               href={`#${link.toLowerCase()}`}
               className="px-4 py-2 rounded-full text-sm transition-colors hover:bg-white/10"
-              style={{ fontFamily: "'DM Sans', sans-serif", letterSpacing: "-0.02em", color: "white" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif", letterSpacing: "-0.02em", color: "white" }}
             >
               {link}
             </a>
@@ -307,16 +309,16 @@ export default function LandingPage() {
           >
             <h1
               className="text-4xl sm:text-5xl lg:text-[72px] font-black leading-[1.05] tracking-tight"
-              style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
-              Discover the magic that never ends
+              {cfg.landing.heroTitle}
             </h1>
 
             <p
               className="text-base sm:text-lg lg:text-2xl leading-[1.4] max-w-[600px]"
               style={{ color: COLORS.white70, letterSpacing: "-0.01em" }}
             >
-              Dive into a universe of enchanting stories and unforgettable characters, where the magic of Rase+ is always at your fingertips.
+              {cfg.landing.heroSubtitle}
             </p>
 
             <div className="flex items-center gap-4 mt-2">
@@ -325,7 +327,7 @@ export default function LandingPage() {
                 className="group flex items-center gap-2 px-8 py-4 text-base transition-all hover:scale-105 active:scale-95"
                 style={ctaStyle}
               >
-                Get Started
+                {cfg.landing.ctaText}
                 <ArrowIcon />
               </Link>
               <a
@@ -338,7 +340,7 @@ export default function LandingPage() {
                   letterSpacing: "-0.02em",
                 }}
               >
-                View Plans
+                {cfg.landing.secondaryCtaText}
               </a>
             </div>
           </motion.div>
@@ -411,14 +413,14 @@ export default function LandingPage() {
           >
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4 leading-tight"
-              style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
-              Live the{" "}
-              <span style={{ color: COLORS.cyan }}>complete</span>{" "}
+              {cfg.landing.benefitsTitle}{" "}
+              <span style={{ color: COLORS.cyan }}>{cfg.landing.benefitsHighlight}</span>{" "}
               experience
             </h2>
             <p className="text-sm sm:text-base leading-relaxed" style={{ color: COLORS.white50 }}>
-              Watch wherever you want, whenever you want, with impeccable quality and exclusive features to transform each session into an unforgettable event.
+              {cfg.landing.benefitsSubtitle}
             </p>
           </motion.div>
 
@@ -460,7 +462,7 @@ export default function LandingPage() {
                   </div>
                   <h3
                     className="text-lg font-bold mb-2"
-                    style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+                    style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
                   >
                     {b.title}
                   </h3>
@@ -491,122 +493,78 @@ export default function LandingPage() {
           >
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4 leading-tight"
-              style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
-              Choose your{" "}
-              <span style={{ color: COLORS.cyan }}>plan</span>
+              {cfg.landing.plansTitle}{" "}
+              <span style={{ color: COLORS.cyan }}>{cfg.landing.plansHighlight}</span>
             </h2>
             <p className="text-sm sm:text-base leading-relaxed" style={{ color: COLORS.white50 }}>
-              We offer personalized plans for you to enjoy Rase+ your way. Explore our options and see which one is perfect for you.
+              {cfg.landing.plansSubtitle}
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Standard Plan */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="relative p-8 rounded-3xl"
-              style={{
-                border: `1px solid rgba(255,255,255,0.08)`,
-                backgroundColor: "rgba(255,255,255,0.02)",
-              }}
-            >
-              <p className="text-sm font-semibold mb-2" style={{ color: COLORS.white50, fontFamily: "'Satoshi', sans-serif" }}>
-                Standard
-              </p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-black" style={{ fontFamily: "'Satoshi', sans-serif" }}>$8.99</span>
-                <span className="text-sm" style={{ color: COLORS.white50 }}>/mo</span>
-              </div>
-              <p className="text-xs mb-6" style={{ color: "rgba(255,255,255,0.3)" }}>Billed monthly</p>
-
-              <ul className="space-y-3 mb-8">
-                {[
-                  "Movies, original series and classics",
-                  "Disney, Pixar, Marvel, Star Wars & more",
-                  "2 Simultaneous devices",
-                  "Downloads for offline viewing",
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: COLORS.white70 }}>
-                    <span className="mt-0.5"><CheckIcon /></span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/register"
-                className="block w-full text-center py-3.5 rounded-xl text-sm font-bold transition-all hover:bg-white/10"
-                style={{
-                  border: `1px solid ${COLORS.white10}`,
-                  backgroundColor: COLORS.white05,
-                  color: "white",
+            {(cfg.landing.plans || []).map((plan, pi) => (
+              <motion.div
+                key={pi}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: pi * 0.1 }}
+                className="relative p-8 rounded-3xl"
+                style={plan.highlighted ? {
+                  border: `1px solid rgba(13,214,232,0.2)`,
+                  background: `linear-gradient(180deg, rgba(1,61,203,0.12) 0%, transparent 60%)`,
+                } : {
+                  border: `1px solid rgba(255,255,255,0.08)`,
+                  backgroundColor: "rgba(255,255,255,0.02)",
                 }}
               >
-                Get Started
-              </Link>
-            </motion.div>
+                {plan.badge && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                    style={{ ...ctaStyle, fontSize: 12 }}
+                  >
+                    {plan.badge}
+                  </div>
+                )}
 
-            {/* Premium Plan */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="relative p-8 rounded-3xl"
-              style={{
-                border: `1px solid rgba(13,214,232,0.2)`,
-                background: `linear-gradient(180deg, rgba(1,61,203,0.12) 0%, transparent 60%)`,
-              }}
-            >
-              {/* Popular badge */}
-              <div
-                className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-                style={{ ...ctaStyle, fontSize: 12 }}
-              >
-                Most Popular
-              </div>
+                <p className="text-sm font-semibold mb-2" style={{ color: plan.highlighted ? COLORS.cyan : COLORS.white50, fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}>
+                  {plan.name}
+                </p>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-4xl font-black" style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}>{plan.price}</span>
+                  <span className="text-sm" style={{ color: COLORS.white50 }}>/mo</span>
+                </div>
+                <p className="text-xs mb-6" style={{ color: "rgba(255,255,255,0.3)" }}>{plan.period}</p>
 
-              <p className="text-sm font-semibold mb-2" style={{ color: COLORS.cyan, fontFamily: "'Satoshi', sans-serif" }}>
-                Premium
-              </p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-black" style={{ fontFamily: "'Satoshi', sans-serif" }}>$13.99</span>
-                <span className="text-sm" style={{ color: COLORS.white50 }}>/mo</span>
-              </div>
-              <p className="text-xs mb-6" style={{ color: "rgba(255,255,255,0.3)" }}>Billed monthly</p>
+                <ul className="space-y-3 mb-8">
+                  {(plan.features || []).map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: COLORS.white70 }}>
+                      <span className="mt-0.5"><CheckIcon /></span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
 
-              <ul className="space-y-3 mb-8">
-                {[
-                  "Everything in Standard",
-                  "Video up to 4K UHD/HDR & Dolby Atmos",
-                  "4 Simultaneous devices",
-                  "Sports with ESPN",
-                  "Downloads for offline viewing",
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: COLORS.white70 }}>
-                    <span className="mt-0.5"><CheckIcon /></span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/register"
-                className="block w-full text-center py-3.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  ...ctaStyle,
-                  display: "block",
-                  textAlign: "center",
-                  textDecoration: "none",
-                }}
-              >
-                Get Started
-              </Link>
-            </motion.div>
+                <Link
+                  href="/register"
+                  className="block w-full text-center py-3.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={plan.highlighted ? {
+                    ...ctaStyle,
+                    display: "block",
+                    textAlign: "center",
+                    textDecoration: "none",
+                  } : {
+                    border: `1px solid ${COLORS.white10}`,
+                    backgroundColor: COLORS.white05,
+                    color: "white",
+                  }}
+                >
+                  {cfg.landing.ctaText}
+                </Link>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -623,10 +581,10 @@ export default function LandingPage() {
           >
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4"
-              style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
-              Have questions?{" "}
-              <span style={{ color: COLORS.cyan }}>We have answers.</span>
+              {cfg.landing.faqTitle}{" "}
+              <span style={{ color: COLORS.cyan }}>{cfg.landing.faqHighlight}</span>
             </h2>
           </motion.div>
 
@@ -714,13 +672,13 @@ export default function LandingPage() {
           >
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4"
-              style={{ fontFamily: "'Satoshi', 'DM Sans', sans-serif" }}
+              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
-              A whole universe{" "}
-              <span style={{ color: COLORS.cyan }}>to explore</span>
+              {cfg.landing.moviesTitle}{" "}
+              <span style={{ color: COLORS.cyan }}>{cfg.landing.moviesHighlight}</span>
             </h2>
             <p className="text-sm sm:text-base leading-relaxed" style={{ color: COLORS.white50 }}>
-              Endless entertainment at your fingertips — from timeless classics to the latest releases.
+              {cfg.landing.moviesSubtitle}
             </p>
           </motion.div>
         </div>
@@ -762,7 +720,7 @@ export default function LandingPage() {
               boxShadow: `inset 0px 4px 16px 0px ${COLORS.cyanGlow}, 0 0 30px rgba(13,214,232,0.2)`,
             }}
           >
-            Start Watching Now
+            {cfg.landing.moviesCta}
             <ArrowIcon />
           </Link>
         </div>
@@ -777,62 +735,51 @@ export default function LandingPage() {
               <Link href="/" className="mb-4 block">
                 <div className="relative h-10 w-32">
                   <Image
-                    src="/logo.png"
-                    alt="Rase+"
+                    src={cfg.logoUrl}
+                    alt={cfg.siteName}
                     fill
                     className="object-contain"
                   />
                 </div>
               </Link>
               <p className="text-sm leading-relaxed" style={{ color: COLORS.white50 }}>
-                The best of entertainment. Discover unlimited movies, series, and exclusive content.
+                {cfg.footer.description}
               </p>
             </div>
 
-            {/* Col 2: Explore */}
-            <div>
-              <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Satoshi', sans-serif", color: COLORS.white70 }}>
-                Explore
-              </h4>
-              <div className="flex flex-col gap-2.5">
-                {["Resources", "Lessons", "Blog"].map((link) => (
-                  <a key={link} href="#" className="text-sm transition-colors hover:text-white" style={{ color: COLORS.white50 }}>
-                    {link}
-                  </a>
-                ))}
+            {/* Dynamic Footer Columns */}
+            {(cfg.footer.columns || []).map((col, ci) => (
+              <div key={ci}>
+                <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif", color: COLORS.white70 }}>
+                  {col.title}
+                </h4>
+                <div className="flex flex-col gap-2.5">
+                  {(col.links || []).map((link) => (
+                    <a key={link.label} href={link.href} className="text-sm transition-colors hover:text-white" style={{ color: COLORS.white50 }}>
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
+            ))}
 
-            {/* Col 3: Follow Us */}
+            {/* Social Links */}
             <div>
-              <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Satoshi', sans-serif", color: COLORS.white70 }}>
+              <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif", color: COLORS.white70 }}>
                 Follow Us
               </h4>
               <div className="flex flex-col gap-2.5">
-                {[
-                  { platform: "X (Twitter)", handle: "@raseplusbr" },
-                  { platform: "YouTube", handle: "@raseplusbr" },
-                  { platform: "Instagram", handle: "@raseplusbr" },
-                ].map((social) => (
-                  <a key={social.platform} href="#" className="flex items-center gap-2 text-sm transition-colors hover:text-white" style={{ color: COLORS.white50 }}>
-                    {social.platform === "X (Twitter)" && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                    )}
-                    {social.platform === "YouTube" && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
-                    )}
-                    {social.platform === "Instagram" && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" /></svg>
-                    )}
+                {(cfg.footer.socials || []).map((social) => (
+                  <a key={social.platform} href={social.url || "#"} className="flex items-center gap-2 text-sm transition-colors hover:text-white" style={{ color: COLORS.white50 }}>
                     {social.handle}
                   </a>
                 ))}
               </div>
             </div>
 
-            {/* Col 4: Support */}
+            {/* Support */}
             <div>
-              <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Satoshi', sans-serif", color: COLORS.white70 }}>
+              <h4 className="text-sm font-bold mb-4" style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif", color: COLORS.white70 }}>
                 Need Help?
               </h4>
               <a
@@ -844,7 +791,7 @@ export default function LandingPage() {
                   color: "white",
                 }}
               >
-                Support
+                {cfg.footer.supportButtonText || "Support"}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
                 </svg>
@@ -855,7 +802,7 @@ export default function LandingPage() {
           {/* Bottom bar */}
           <div className="pt-6" style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
             <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
-              Copyright © 2024 Rase+. All rights reserved.
+              {cfg.footer.copyright}
             </p>
           </div>
         </div>

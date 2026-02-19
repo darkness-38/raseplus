@@ -17,6 +17,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
     const [name, setName] = useState(profile?.name ?? "");
     const [avatar, setAvatar] = useState(profile?.avatar ?? AVATARS[0]);
     const [isKids, setIsKids] = useState(profile?.isKids ?? false);
+    const [allowAdult, setAllowAdult] = useState(profile?.allowAdultContent ?? false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
@@ -33,9 +34,9 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
         setError("");
         try {
             if (isEditing) {
-                await updateProfile(user.uid, profile.id, { name: name.trim(), avatar, isKids });
+                await updateProfile(user.uid, profile.id, { name: name.trim(), avatar, isKids, allowAdultContent: allowAdult });
             } else {
-                await createProfile(user.uid, { name: name.trim(), avatar, isKids });
+                await createProfile(user.uid, { name: name.trim(), avatar, isKids, allowAdultContent: allowAdult });
             }
             onSave();
         } catch (e) {
@@ -126,6 +127,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
                             e.target.style.borderColor = "rgba(255,255,255,0.08)";
                             e.target.style.boxShadow = "none";
                         }}
+                        suppressHydrationWarning
                     />
                 </div>
 
@@ -160,9 +162,12 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
                 </div>
 
                 {/* Kids Toggle */}
-                <div className="mb-8">
+                <div className="mb-4">
                     <button
-                        onClick={() => setIsKids(!isKids)}
+                        onClick={() => {
+                            setIsKids(!isKids);
+                            if (!isKids) setAllowAdult(false); // Kids on → adult off
+                        }}
                         className="flex items-center gap-4 w-full p-4 rounded-xl transition-all duration-200"
                         style={{
                             backgroundColor: isKids ? "rgba(13,214,232,0.06)" : "rgba(255,255,255,0.02)",
@@ -190,6 +195,40 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
                         </div>
                     </button>
                 </div>
+
+                {/* Adult Content Toggle */}
+                {!isKids && (
+                    <div className="mb-8">
+                        <button
+                            onClick={() => setAllowAdult(!allowAdult)}
+                            className="flex items-center gap-4 w-full p-4 rounded-xl transition-all duration-200"
+                            style={{
+                                backgroundColor: allowAdult ? "rgba(239,68,68,0.06)" : "rgba(255,255,255,0.02)",
+                                border: allowAdult ? "1px solid rgba(239,68,68,0.15)" : "1px solid rgba(255,255,255,0.06)",
+                            }}
+                        >
+                            <div
+                                className="relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0"
+                                style={{ backgroundColor: allowAdult ? "#ef4444" : "rgba(255,255,255,0.12)" }}
+                            >
+                                <motion.div
+                                    className="absolute top-1 w-5 h-5 rounded-full shadow-md"
+                                    style={{ backgroundColor: "white" }}
+                                    animate={{ left: allowAdult ? 24 : 4 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm font-semibold text-white">Adult Content</p>
+                                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                                    Show unfiltered XXX / NC-17 rated content
+                                </p>
+                            </div>
+                        </button>
+                    </div>
+                )}
+
+                {isKids && <div className="mb-8" />}
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">

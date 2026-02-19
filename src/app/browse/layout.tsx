@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import VideoPlayer from "@/components/VideoPlayer";
-import MangaReader from "@/components/MangaReader";
 import { useStore } from "@/store/useStore";
 import { AnimatePresence } from "framer-motion";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function BrowseLayout({
     children,
@@ -16,7 +16,8 @@ export default function BrowseLayout({
 }) {
     const { user, loading, jellyfinError, retryJellyfin } = useAuth();
     const router = useRouter();
-    const { isPlayerOpen, isReaderOpen, isJellyfinReady, activeProfile } = useStore();
+    const { isPlayerOpen, isJellyfinReady, activeProfile } = useStore();
+    const { config: cfg } = useSiteConfig();
 
     useEffect(() => {
         if (!loading && !user) {
@@ -39,7 +40,7 @@ export default function BrowseLayout({
                         className="w-12 h-12 rounded-full animate-spin"
                         style={{ border: "4px solid rgba(13,214,232,0.2)", borderTopColor: "#0DD6E8" }}
                     />
-                    <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Loading Rase+...</span>
+                    <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>{cfg.browse.loadingText}</span>
                 </div>
             </div>
         );
@@ -99,7 +100,6 @@ export default function BrowseLayout({
             )}
 
             <AnimatePresence>{isPlayerOpen && <VideoPlayer />}</AnimatePresence>
-            <AnimatePresence>{isReaderOpen && <MangaReader />}</AnimatePresence>
         </div>
     );
 }

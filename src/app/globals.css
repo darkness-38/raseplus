@@ -12,7 +12,7 @@
   --color-muted: #7b8db5;
   --color-border: rgba(255, 255, 255, 0.06);
   --color-glow: rgba(13, 214, 232, 0.25);
-  --font-sans: var(--font-dm-sans), var(--font-inter);
+  --font-sans: var(--font-body), system-ui, sans-serif;
 }
 
 /* ─── Reset & Base ─── */
@@ -30,10 +30,22 @@ html {
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  letter-spacing: 0.01em;
+}
+
+/* Heading typography */
+.font-heading {
+  font-family: 'Google Sans Flex', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Body typography */
+.font-body {
+  font-family: var(--font-body), system-ui, sans-serif;
 }
 
 /* ─── Glassmorphism ─── */
@@ -208,6 +220,7 @@ body {
 
 /* ─── Primary CTA Button ─── */
 .btn-primary {
+  font-family: 'Google Sans Flex', system-ui, sans-serif;
   background-color: #0DD6E8;
   box-shadow: inset 0px 4px 16px 0px rgba(194, 255, 255, 1);
   border-radius: 100px;

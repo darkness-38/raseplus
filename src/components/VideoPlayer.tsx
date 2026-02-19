@@ -1,436 +1,597 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
-import { jellyfin } from "@/lib/jellyfin";
 import { useStore } from "@/store/useStore";
+import { jellyfin } from "@/lib/jellyfin";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function VideoPlayer() {
+    const { playerItemId, playerTitle, closePlayer, nextEpisodeId, nextEpisodeTitle, openPlayer } = useStore();
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const hlsRef = useRef<Hls | null>(null);
-    const hideTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
-    const {
-        playerItemId,
-        playerTitle,
-        closePlayer,
-        nextEpisodeId,
-        nextEpisodeTitle,
-        openPlayer,
-        setNextEpisode,
-    } = useStore();
-
-    const [isPlaying, setIsPlaying] = useState(false);
+    // State
+    const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
-    const [showControls, setShowControls] = useState(true);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [buffered, setBuffered] = useState(0);
-    const [showNextPrompt, setShowNextPrompt] = useState(false);
-    const [introData, setIntroData] = useState<{
-        IntroStart?: number;
-        IntroEnd?: number;
-    } | null>(null);
-    const [showSkipIntro, setShowSkipIntro] = useState(false);
-    const [quality, setQuality] = useState(-1); // -1 = auto
-    const [showQualityMenu, setShowQualityMenu] = useState(false);
-    const [qualities, setQualities] = useState<{ height: number; index: number }[]>([]);
+    const [isControlsVisible, setIsControlsVisible] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const [showSettings, setShowSettings] = useState(false);
+    const [activeTab, setActiveTab] = useState<"quality" | "audio" | "subtitles">("quality");
 
-    // Initialize HLS stream
-    useEffect(() => {
-        if (!playerItemId || !videoRef.current) return;
+    // Track state (Metadata)
+    const [qualities, setQualities] = useState<{ index: number; height: number; bitrate: number }[]>([]);
+    const [currentQuality, setCurrentQuality] = useState(-1); // -1 = auto
+    const [audioTracks, setAudioTracks] = useState<{ index: number; name: string; lang?: string }[]>([]);
+    const [currentAudio, setCurrentAudio] = useState<number | undefined>(undefined);
+    const [subtitles, setSubtitles] = useState<{ index: number; name: string; lang?: string }[]>([]);
+    const [currentSubtitle, setCurrentSubtitle] = useState<number | undefined>(undefined);
 
-        const video = videoRef.current;
-        const streamUrl = jellyfin.getStreamUrl(playerItemId);
+    const [mediaSourceId, setMediaSourceId] = useState<string | null>(null);
+    // Removed persistent playSessionId state
 
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
-                startLevel: -1,
-            });
-            hlsRef.current = hls;
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
+    const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastTimeRef = useRef<number>(0);
 
-            hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-                const q = data.levels.map((level, index) => ({
-                    height: level.height,
-                    index,
-                }));
-                setQualities(q);
-                video.play().catch(() => { });
-            });
-
-            hls.on(Hls.Events.ERROR, (_, data) => {
-                if (data.fatal) {
-                    console.error("HLS Fatal Error:", data);
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        hls.startLoad();
-                    } else {
-                        // Fallback to direct stream
-                        video.src = jellyfin.getDirectStreamUrl(playerItemId);
-                        video.play().catch(() => { });
-                    }
-                }
-            });
-
-            return () => {
-                hls.destroy();
-                hlsRef.current = null;
-            };
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = streamUrl;
-            video.play().catch(() => { });
-        } else {
-            video.src = jellyfin.getDirectStreamUrl(playerItemId);
-            video.play().catch(() => { });
-        }
-    }, [playerItemId]);
-
-    // Fetch intro timestamps
+    // 1. Fetch Metadata & Setup Tracks
     useEffect(() => {
         if (!playerItemId) return;
-        jellyfin.getIntroTimestamps(playerItemId).then(setIntroData);
+
+        const fetchMetadata = async () => {
+            try {
+                setIsLoading(true);
+                const item = await jellyfin.getItem(playerItemId);
+                console.log("[VideoPlayer] Metadata loaded:", item);
+
+                const source = item.MediaSources?.[0];
+                const sourceId = source?.Id ?? playerItemId;
+                setMediaSourceId(sourceId);
+
+                console.log("[VideoPlayer] MediaStreams:", source?.MediaStreams);
+
+                if (source?.MediaStreams) {
+                    const audio = source.MediaStreams.filter(s => s.Type === "Audio").map(s => ({
+                        index: s.Index,
+                        name: s.DisplayTitle || s.Title || s.Language || `Audio ${s.Index}`,
+                        lang: s.Language
+                    }));
+                    setAudioTracks(audio);
+
+                    const defaultAudio = source.MediaStreams.find(s => s.Type === "Audio" && s.IsDefault);
+                    if (defaultAudio) setCurrentAudio(defaultAudio.Index);
+                    else if (audio.length > 0) setCurrentAudio(audio[0].index);
+
+                    const subs = source.MediaStreams.filter(s => s.Type === "Subtitle").map(s => ({
+                        index: s.Index,
+                        name: s.DisplayTitle || s.Title || s.Language || `Subtitle ${s.Index}`,
+                        lang: s.Language
+                    }));
+                    setSubtitles(subs);
+
+                    const defaultSub = source.MediaStreams.find(s => s.Type === "Subtitle" && s.IsDefault);
+                    if (defaultSub) setCurrentSubtitle(defaultSub.Index);
+                    else setCurrentSubtitle(undefined);
+                }
+
+                jellyfin.startPlayback(playerItemId, sourceId);
+            } catch (e) {
+                console.error("Error fetching metadata:", e);
+            }
+        };
+
+        fetchMetadata();
     }, [playerItemId]);
 
-    // Skip intro logic
+    // 2. Load/Reload Stream when Source or Tracks change
     useEffect(() => {
-        if (!introData?.IntroStart || !introData?.IntroEnd) return;
-        setShowSkipIntro(
-            currentTime >= introData.IntroStart && currentTime < introData.IntroEnd
-        );
-    }, [currentTime, introData]);
+        if (!playerItemId || !mediaSourceId || !videoRef.current) return;
 
-    // Auto-next prompt (10s before end)
-    useEffect(() => {
-        if (!nextEpisodeId || duration <= 0) return;
-        setShowNextPrompt(currentTime >= duration - 10 && currentTime < duration);
-    }, [currentTime, duration, nextEpisodeId]);
+        // Don't load stream until we have determined initial audio/subs (to avoid double load)
+        // We can check if audioTracks is populated if we expect them, but simpler is just to depend on state.
+        // However, we need to handle the case where we just loaded metadata and are setting state.
 
-    // Hide controls on idle
-    const resetHideTimer = useCallback(() => {
-        setShowControls(true);
-        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = setTimeout(() => {
-            if (isPlaying) setShowControls(false);
-        }, 3000);
-    }, [isPlaying]);
+        const loadStream = () => {
+            // 1. Capture current time using REF (reliable across re-renders/cleanups where videoRef might be reset)
+            const savedTime = lastTimeRef.current;
+            const currentTicks = Math.floor(savedTime * 10000000);
 
+            console.log("[VideoPlayer] Reloading stream. Saved Time:", savedTime, "s (", currentTicks, "ticks)");
+
+            setIsLoading(true);
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+
+            // Generate a fresh session ID for every stream load to force server to respect new track selection
+            const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+            const streamUrl = jellyfin.getStreamUrl(playerItemId, mediaSourceId, sessionId, {
+                audioStreamIndex: currentAudio,
+                subtitleStreamIndex: currentSubtitle,
+                startTimeTicks: currentTicks
+            });
+
+            console.log("[VideoPlayer] Loading stream with SessionId:", sessionId);
+            console.log("[VideoPlayer] URL:", streamUrl);
+
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    capLevelToPlayerSize: true,
+                    autoStartLoad: true,
+                    startPosition: savedTime
+                });
+                hlsRef.current = hls;
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(videoRef.current!);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+                    setIsLoading(false);
+                    console.log("[VideoPlayer] Manifest Parsed. Resuming at:", savedTime);
+
+                    // Force client-side seek if server didn't start at the right time
+                    if (savedTime > 0 && videoRef.current) {
+                        videoRef.current.currentTime = savedTime;
+                    }
+
+                    videoRef.current?.play().catch(e => console.error("Play failed:", e));
+
+                    // Get Quality Levels (Client side from HLS manifest)
+                    const levels = hls.levels.map((l, i) => ({
+                        index: i,
+                        height: l.height,
+                        bitrate: l.bitrate
+                    })).sort((a, b) => b.height - a.height);
+                    setQualities(levels);
+
+                    // NOTE: We do NOT overwrite audio/subs from HLS manifest anymore
+                    // as we are managing them server-side via query params.
+                });
+
+                hls.on(Hls.Events.ERROR, (_, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+
+            } else if (videoRef.current?.canPlayType("application/vnd.apple.mpegurl")) {
+                videoRef.current.src = streamUrl;
+                videoRef.current.addEventListener("loadedmetadata", () => {
+                    setIsLoading(false);
+                    videoRef.current?.play();
+                });
+            }
+        };
+
+        loadStream();
+
+        return () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+        };
+
+    }, [playerItemId, mediaSourceId, currentAudio, currentSubtitle]);
+
+    // Cleanup reporting
     useEffect(() => {
         return () => {
-            if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+            if (playerItemId && mediaSourceId && videoRef.current) {
+                jellyfin.stopPlayback(playerItemId, mediaSourceId, videoRef.current.currentTime * 10000000);
+            }
         };
-    }, []);
+    }, [playerItemId, mediaSourceId]);
 
-    // Video event handlers
-    const onTimeUpdate = () => {
-        if (!videoRef.current) return;
-        setCurrentTime(videoRef.current.currentTime);
-        if (videoRef.current.buffered.length > 0) {
-            setBuffered(videoRef.current.buffered.end(videoRef.current.buffered.length - 1));
+    // Handle Controls Visibility
+    const showControls = () => {
+        setIsControlsVisible(true);
+        if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+        controlTimeoutRef.current = setTimeout(() => {
+            if (!showSettings && playing) setIsControlsVisible(false);
+        }, 3000);
+    };
+
+    useEffect(() => {
+        const handleMouseMove = () => showControls();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            showControls();
+            if (e.key === "ArrowRight") seek(10);
+            if (e.key === "ArrowLeft") seek(-10);
+            if (e.key === " ") togglePlay();
+            if (e.key === "Escape") closePlayer();
+        };
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("keydown", handleKeyDown);
+            if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+        };
+    }, [playing, showSettings]);
+
+    // Video Events
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            const time = videoRef.current.currentTime;
+            setCurrentTime(time);
+            lastTimeRef.current = time;
+            setDuration(videoRef.current.duration || 0);
         }
     };
 
+    const handlePlayPause = () => {
+        setPlaying(!videoRef.current?.paused);
+    };
+
+    // Actions
     const togglePlay = () => {
-        if (!videoRef.current) return;
-        if (videoRef.current.paused) {
+        if (videoRef.current?.paused) {
             videoRef.current.play();
         } else {
-            videoRef.current.pause();
+            videoRef.current?.pause();
+            if (videoRef.current && playerItemId && mediaSourceId) {
+                jellyfin.onPlaybackProgress(playerItemId, mediaSourceId, videoRef.current.currentTime * 10000000);
+            }
         }
     };
 
-    const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!videoRef.current) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const ratio = (e.clientX - rect.left) / rect.width;
-        videoRef.current.currentTime = ratio * duration;
+    const seek = (seconds: number) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.min(Math.max(videoRef.current.currentTime + seconds, 0), duration);
+        }
     };
 
-    const changeVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        setVolume(val);
+    const seekTo = (time: number) => {
         if (videoRef.current) {
-            videoRef.current.volume = val;
-            setIsMuted(val === 0);
+            videoRef.current.currentTime = time;
         }
     };
 
     const toggleMute = () => {
-        if (!videoRef.current) return;
-        videoRef.current.muted = !videoRef.current.muted;
-        setIsMuted(videoRef.current.muted);
-    };
-
-    const toggleFullscreen = async () => {
-        if (!containerRef.current) return;
-        if (document.fullscreenElement) {
-            await document.exitFullscreen();
-            setIsFullscreen(false);
-        } else {
-            await containerRef.current.requestFullscreen();
-            setIsFullscreen(true);
+        if (videoRef.current) {
+            videoRef.current.muted = !isMuted;
+            setIsMuted(!isMuted);
         }
     };
 
-    const setQualityLevel = (index: number) => {
+    const handleVolumeChange = (v: number) => {
+        if (videoRef.current) {
+            videoRef.current.volume = v;
+            setVolume(v);
+            setIsMuted(v === 0);
+        }
+    };
+
+    const changeQuality = (index: number) => {
         if (hlsRef.current) {
             hlsRef.current.currentLevel = index;
-            setQuality(index);
-        }
-        setShowQualityMenu(false);
-    };
-
-    const skipIntro = () => {
-        if (videoRef.current && introData?.IntroEnd) {
-            videoRef.current.currentTime = introData.IntroEnd;
+            setCurrentQuality(index);
         }
     };
 
-    const playNext = () => {
+    const changeAudio = (index: number) => {
+        console.log("[VideoPlayer] Changing Audio to:", index);
+        setCurrentAudio(index);
+    };
+
+    const changeSubtitle = (index: number) => {
+        console.log("[VideoPlayer] Changing Subtitle to:", index);
+        setCurrentSubtitle(index);
+    };
+
+    const handleNextEpisode = () => {
         if (nextEpisodeId && nextEpisodeTitle) {
             openPlayer(nextEpisodeId, nextEpisodeTitle);
-            setNextEpisode(null, null);
         }
     };
 
-    const formatTime = (s: number) => {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const sec = Math.floor(s % 60);
-        if (h > 0)
-            return `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
-        return `${m}:${sec.toString().padStart(2, "0")}`;
+    // Helper format
+    const formatTime = (time: number) => {
+        const h = Math.floor(time / 3600);
+        const m = Math.floor((time % 3600) / 60);
+        const s = Math.floor(time % 60);
+        if (h > 0) return `${h}:${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
+        return `${m}:${s < 10 ? "0" + s : s}`;
     };
 
     return (
         <motion.div
-            ref={containerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
-            onMouseMove={resetHideTimer}
-            onClick={resetHideTimer}
+            className="fixed inset-0 z-[100] bg-black flex items-center justify-center font-sans"
+            ref={containerRef}
+            onMouseMove={showControls}
+            onClick={() => { if (showSettings) setShowSettings(false); }}
         >
-            {/* Video */}
             <video
                 ref={videoRef}
-                onTimeUpdate={onTimeUpdate}
-                onDurationChange={() =>
-                    setDuration(videoRef.current?.duration ?? 0)
-                }
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onEnded={playNext}
-                onClick={togglePlay}
-                className="w-full h-full object-contain cursor-pointer"
-                playsInline
+                className="w-full h-full object-contain"
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={handlePlayPause}
+                onPause={handlePlayPause}
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
             />
 
-            {/* Controls Overlay */}
-            <motion.div
-                initial={false}
-                animate={{ opacity: showControls ? 1 : 0 }}
-                transition={{ duration: 0.3 }}
-                className={`absolute inset-0 player-overlay pointer-events-none ${showControls ? "pointer-events-auto" : ""
-                    }`}
-            >
-                {/* Top Bar */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 lg:p-6">
-                    <button
-                        onClick={closePlayer}
-                        className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        <span className="text-sm font-medium hidden sm:block">Back</span>
-                    </button>
-                    <h3 className="text-white font-medium text-sm lg:text-base truncate max-w-md">
-                        {playerTitle}
-                    </h3>
-                    <div className="w-20" />
+            {/* Loading Spinner */}
+            {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                 </div>
+            )}
 
-                {/* Center Play Button */}
-                {!isPlaying && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <button
-                            onClick={togglePlay}
-                            className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
-                        >
-                            <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
-
-                {/* Skip Intro Button */}
-                {showSkipIntro && (
-                    <motion.button
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        onClick={skipIntro}
-                        className="absolute bottom-28 right-6 px-6 py-3 bg-white/20 backdrop-blur-md border border-white/30 text-white font-semibold rounded-lg hover:bg-white/30 transition-all"
-                    >
-                        Skip Intro ▸
-                    </motion.button>
-                )}
-
-                {/* Auto-Next Prompt */}
-                {showNextPrompt && nextEpisodeTitle && (
+            {/* Controls Overlay */}
+            <AnimatePresence>
+                {isControlsVisible && (
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="absolute bottom-28 right-6 glass-strong rounded-xl p-4 max-w-xs"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 flex flex-col justify-between p-6 sm:p-10 bg-gradient-to-b from-black/60 via-transparent to-black/80"
+                        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.8) 100%)" }}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        <p className="text-xs text-muted mb-1">Up Next</p>
-                        <p className="text-sm text-white font-medium mb-3 truncate">
-                            {nextEpisodeTitle}
-                        </p>
-                        <button
-                            onClick={playNext}
-                            className="w-full py-2 bg-white text-black font-bold rounded-lg text-sm hover:bg-white/90 transition-all"
-                        >
-                            Play Next Episode
-                        </button>
-                    </motion.div>
-                )}
-
-                {/* Bottom Controls */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6">
-                    {/* Progress Bar */}
-                    <div className="relative h-1.5 group cursor-pointer mb-4" onClick={seek}>
-                        <div className="absolute inset-0 bg-white/20 rounded-full overflow-hidden">
-                            {/* Buffered */}
-                            <div
-                                className="absolute h-full bg-white/30 rounded-full"
-                                style={{ width: `${(buffered / duration) * 100}%` }}
-                            />
-                            {/* Progress */}
-                            <div
-                                className="absolute h-full bg-accent rounded-full"
-                                style={{ width: `${(currentTime / duration) * 100}%` }}
-                            />
+                        {/* Top Bar */}
+                        <div className="flex items-start justify-between">
+                            <button
+                                onClick={closePlayer}
+                                className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all group"
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white group-hover:scale-110 transition-transform">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                                </svg>
+                            </button>
+                            <div className="text-center">
+                                <h2 className="text-white/90 font-bold text-lg sm:text-2xl drop-shadow-md">{playerTitle}</h2>
+                            </div>
+                            <div className="w-12" /> {/* Spacer */}
                         </div>
-                        {/* Thumb */}
-                        <div
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-accent rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ left: `calc(${(currentTime / duration) * 100}% - 8px)` }}
-                        />
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            {/* Play/Pause */}
-                            <button onClick={togglePlay} className="text-white hover:text-accent transition-colors">
-                                {isPlaying ? (
-                                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                        {/* Center Play Button (Large) */}
+                        {!playing && !isLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <motion.div
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="w-20 h-20 rounded-full bg-cyan-500/20 backdrop-blur-sm flex items-center justify-center pointer-events-auto cursor-pointer hover:bg-cyan-500/40 transition-colors"
+                                    onClick={togglePlay}
+                                >
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
                                         <path d="M8 5v14l11-7z" />
                                     </svg>
-                                )}
-                            </button>
+                                </motion.div>
+                            </div>
+                        )}
 
-                            {/* Volume */}
-                            <div className="flex items-center gap-2 group/vol">
-                                <button onClick={toggleMute} className="text-white hover:text-accent transition-colors">
-                                    {isMuted || volume === 0 ? (
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                        </svg>
-                                    )}
-                                </button>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.05"
-                                    value={isMuted ? 0 : volume}
-                                    onChange={changeVolume}
-                                    className="w-0 group-hover/vol:w-20 transition-all opacity-0 group-hover/vol:opacity-100 accent-accent h-1"
-                                />
+                        {/* Bottom Bar */}
+                        <div className="flex flex-col gap-4">
+                            {/* Progress Bar */}
+                            <div className="group relative h-1.5 bg-white/20 rounded-full cursor-pointer hover:h-2.5 transition-all"
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const pct = (e.clientX - rect.left) / rect.width;
+                                    seekTo(pct * duration);
+                                }}
+                            >
+                                <div
+                                    className="absolute top-0 left-0 h-full bg-cyan-400 rounded-full relative"
+                                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                                >
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg" />
+                                </div>
                             </div>
 
-                            {/* Time */}
-                            <span className="text-sm text-white/70 tabular-nums">
-                                {formatTime(currentTime)} / {formatTime(duration)}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            {/* Quality */}
-                            {qualities.length > 0 && (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowQualityMenu(!showQualityMenu)}
-                                        className="text-white hover:text-accent transition-colors text-sm font-medium px-2 py-1"
-                                    >
-                                        {quality === -1
-                                            ? "Auto"
-                                            : `${qualities.find((q) => q.index === quality)?.height ?? ""}p`}
+                            {/* Controls Row */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 sm:gap-6">
+                                    <button onClick={togglePlay} className="text-white hover:text-cyan-400 transition-colors">
+                                        {playing ? (
+                                            <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                                        ) : (
+                                            <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                        )}
                                     </button>
-                                    {showQualityMenu && (
-                                        <div className="absolute bottom-full right-0 mb-2 glass-strong rounded-xl overflow-hidden min-w-[120px] shadow-2xl">
-                                            <button
-                                                onClick={() => setQualityLevel(-1)}
-                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${quality === -1 ? "text-accent" : "text-white"
-                                                    }`}
-                                            >
-                                                Auto
-                                            </button>
-                                            {qualities
-                                                .sort((a, b) => b.height - a.height)
-                                                .map((q) => (
-                                                    <button
-                                                        key={q.index}
-                                                        onClick={() => setQualityLevel(q.index)}
-                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${quality === q.index ? "text-accent" : "text-white"
-                                                            }`}
-                                                    >
-                                                        {q.height}p
-                                                    </button>
-                                                ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
 
-                            {/* Fullscreen */}
-                            <button
-                                onClick={toggleFullscreen}
-                                className="text-white hover:text-accent transition-colors"
-                            >
-                                {isFullscreen ? (
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                                    </svg>
-                                )}
-                            </button>
+                                    {/* Seek Buttons */}
+                                    <button onClick={() => seek(-10)} className="text-white/80 hover:text-white transition-colors flex flex-col items-center gap-0.5 group">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V9a6 6 0 0112 0v3" /></svg>
+                                        <span className="text-[10px] font-bold">-10s</span>
+                                    </button>
+                                    <button onClick={() => seek(10)} className="text-white/80 hover:text-white transition-colors flex flex-col items-center gap-0.5 group">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="group-hover:translate-x-0.5 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15l6 6m0 0l6-6m-6 6V9a6 6 0 00-12 0v3" /></svg>
+                                        <span className="text-[10px] font-bold">+10s</span>
+                                    </button>
+
+                                    {/* Volume */}
+                                    <div className="flex items-center gap-2 group/vol">
+                                        <button onClick={toggleMute} className="text-white hover:text-cyan-400">
+                                            {isMuted || volume === 0 ? (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 17.25l-5.25-5.25m0 0L6.75 6.75M12 12l2.25-2.25m-2.25 2.25l-2.25 2.25M3 3l18 18" /></svg>
+                                            ) : (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
+                                            )}
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.05"
+                                            value={isMuted ? 0 : volume}
+                                            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                                            className="w-0 overflow-hidden group-hover/vol:w-20 transition-all accent-cyan-400 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
+                                        />
+                                    </div>
+
+                                    <div className="text-xs sm:text-sm font-medium text-white/70">
+                                        {formatTime(currentTime)} / {formatTime(duration)}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    {/* Next Episode Button */}
+                                    {nextEpisodeId && (
+                                        <button
+                                            onClick={handleNextEpisode}
+                                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all text-sm font-bold border border-white/10"
+                                        >
+                                            Next Episode
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                            </svg>
+                                        </button>
+                                    )}
+
+                                    {/* Settings Toggle */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
+                                            className={`p-2 rounded-full transition-colors ${showSettings ? 'text-cyan-400 bg-white/10' : 'text-white hover:text-cyan-400'}`}
+                                        >
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.43.816 1.035.816 1.73 0 .695-.32 1.3-.816 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+                                            </svg>
+                                        </button>
+
+                                        {/* Settings Menu */}
+                                        <AnimatePresence>
+                                            {showSettings && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    className="absolute bottom-12 right-0 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50 text-sm"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <div className="flex border-b border-white/10">
+                                                        <button
+                                                            onClick={() => setActiveTab("quality")}
+                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "quality" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
+                                                        >
+                                                            Quality
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActiveTab("audio")}
+                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "audio" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
+                                                        >
+                                                            Audio
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActiveTab("subtitles")}
+                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "subtitles" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
+                                                        >
+                                                            Subs
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="max-h-60 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/20">
+                                                        {activeTab === "quality" && (
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => changeQuality(-1)}
+                                                                    className={`px-3 py-2 rounded-lg text-left hover:bg-white/10 flex items-center justify-between ${currentQuality === -1 ? "text-cyan-400" : "text-white/80"}`}
+                                                                >
+                                                                    <span>Auto</span>
+                                                                    {currentQuality === -1 && <CheckIcon />}
+                                                                </button>
+                                                                {qualities.map((q) => (
+                                                                    <button
+                                                                        key={q.index}
+                                                                        onClick={() => changeQuality(q.index)}
+                                                                        className={`px-3 py-2 rounded-lg text-left hover:bg-white/10 flex items-center justify-between ${currentQuality === q.index ? "text-cyan-400" : "text-white/80"}`}
+                                                                    >
+                                                                        <span>{q.height}p <span className="text-xs opacity-50">({Math.round(q.bitrate / 1000)}k)</span></span>
+                                                                        {currentQuality === q.index && <CheckIcon />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {activeTab === "audio" && (
+                                                            <div className="flex flex-col gap-1">
+                                                                {audioTracks.map((t) => (
+                                                                    <button
+                                                                        key={t.index}
+                                                                        onClick={() => changeAudio(t.index)}
+                                                                        className={`px-3 py-2 rounded-lg text-left hover:bg-white/10 flex items-center justify-between ${currentAudio === t.index ? "text-cyan-400" : "text-white/80"}`}
+                                                                    >
+                                                                        <span>{t.name}</span>
+                                                                        <span className="text-xs opacity-50 uppercase">{t.lang}</span>
+                                                                        {currentAudio === t.index && <CheckIcon />}
+                                                                    </button>
+                                                                ))}
+                                                                {audioTracks.length === 0 && <div className="p-4 text-center text-white/40">No alternate audio tracks</div>}
+                                                            </div>
+                                                        )}
+
+                                                        {activeTab === "subtitles" && (
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => changeSubtitle(-1)}
+                                                                    className={`px-3 py-2 rounded-lg text-left hover:bg-white/10 flex items-center justify-between ${currentSubtitle === -1 || currentSubtitle === undefined ? "text-cyan-400" : "text-white/80"}`}
+                                                                >
+                                                                    <span>Off</span>
+                                                                    {(currentSubtitle === -1 || currentSubtitle === undefined) && <CheckIcon />}
+                                                                </button>
+                                                                {subtitles.map((t) => (
+                                                                    <button
+                                                                        key={t.index}
+                                                                        onClick={() => changeSubtitle(t.index)}
+                                                                        className={`px-3 py-2 rounded-lg text-left hover:bg-white/10 flex items-center justify-between ${currentSubtitle === t.index ? "text-cyan-400" : "text-white/80"}`}
+                                                                    >
+                                                                        <span>{t.name}</span>
+                                                                        <span className="text-xs opacity-50 uppercase">{t.lang}</span>
+                                                                        {currentSubtitle === t.index && <CheckIcon />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+
+                                    {/* Fullscreen Toggle (Simple implementation) */}
+                                    <button onClick={() => {
+                                        if (!document.fullscreenElement) {
+                                            containerRef.current?.requestFullscreen();
+                                        } else {
+                                            document.exitFullscreen();
+                                        }
+                                    }} className="text-white hover:text-cyan-400 transition-colors">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }
+
+const CheckIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+);

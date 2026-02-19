@@ -6,6 +6,7 @@ export interface Profile {
     name: string;
     avatar: string;
     isKids: boolean;
+    allowAdultContent?: boolean;
     createdAt: number;
 }
 
@@ -61,7 +62,7 @@ export async function getProfiles(uid: string): Promise<Profile[]> {
 
 export async function createProfile(
     uid: string,
-    data: { name: string; avatar: string; isKids: boolean }
+    data: { name: string; avatar: string; isKids: boolean; allowAdultContent?: boolean }
 ): Promise<Profile> {
     const existing = await getProfiles(uid);
     if (existing.length >= MAX_PROFILES) {
@@ -73,6 +74,7 @@ export async function createProfile(
         name: data.name,
         avatar: data.avatar,
         isKids: data.isKids,
+        allowAdultContent: data.allowAdultContent ?? false,
         createdAt: Date.now(),
     };
 
@@ -83,7 +85,7 @@ export async function createProfile(
 export async function updateProfile(
     uid: string,
     profileId: string,
-    data: { name: string; avatar: string; isKids: boolean }
+    data: { name: string; avatar: string; isKids: boolean; allowAdultContent?: boolean }
 ): Promise<void> {
     const snapshot = await get(profileRef(uid, profileId));
     if (!snapshot.exists()) throw new Error("Profile not found.");
@@ -94,6 +96,7 @@ export async function updateProfile(
         name: data.name,
         avatar: data.avatar,
         isKids: data.isKids,
+        allowAdultContent: data.allowAdultContent ?? false,
     });
 }
 
@@ -113,5 +116,22 @@ export function filterForKids<T extends { OfficialRating?: string }>(
     return items.filter((item) => {
         if (!item.OfficialRating) return true;
         return KIDS_ALLOWED_RATINGS.includes(item.OfficialRating);
+    });
+}
+
+// Ratings considered adult/explicit
+export const ADULT_RATINGS = ["XXX", "NC-17", "X", "Not Rated", "Unrated"];
+
+/**
+ * Filter out adult-rated content unless the profile allows it.
+ */
+export function filterAdultContent<T extends { OfficialRating?: string }>(
+    items: T[],
+    allowAdult: boolean
+): T[] {
+    if (allowAdult) return items;
+    return items.filter((item) => {
+        if (!item.OfficialRating) return true;
+        return !ADULT_RATINGS.includes(item.OfficialRating);
     });
 }

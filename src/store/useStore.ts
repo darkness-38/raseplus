@@ -20,12 +20,6 @@ interface AppState {
     openPlayer: (itemId: string, title: string) => void;
     closePlayer: () => void;
 
-    // Reader state
-    isReaderOpen: boolean;
-    readerItemId: string | null;
-    readerTitle: string;
-    openReader: (itemId: string, title: string) => void;
-    closeReader: () => void;
 
     // Next episode
     nextEpisodeId: string | null;
@@ -85,13 +79,6 @@ export const useStore = create<AppState>((set) => ({
             nextEpisodeTitle: null,
         }),
 
-    isReaderOpen: false,
-    readerItemId: null,
-    readerTitle: "",
-    openReader: (itemId, title) =>
-        set({ isReaderOpen: true, readerItemId: itemId, readerTitle: title }),
-    closeReader: () =>
-        set({ isReaderOpen: false, readerItemId: null, readerTitle: "" }),
 
     nextEpisodeId: null,
     nextEpisodeTitle: null,

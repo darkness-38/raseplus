@@ -45,6 +45,12 @@ interface JellyfinItem {
     RunTimeTicks?: number;
     HasSubtitles?: boolean;
     MediaSources?: MediaSource[];
+    UserData?: {
+        PlaybackPositionTicks?: number;
+        PlayedPercentage?: number;
+        Played?: boolean;
+        PlayCount?: number;
+    };
 }
 
 interface MediaStream {
@@ -82,6 +88,13 @@ class JellyfinService {
                 : auth,
         };
         return h;
+    }
+
+    public getAuthorizationHeader(): string {
+        const auth = `MediaBrowser Client="Rase+", Device="Web", DeviceId="${this.deviceId}", Version="1.0.0"`;
+        return this.accessToken
+            ? `${auth}, Token="${this.accessToken}"`
+            : auth;
     }
 
     async authenticate(): Promise<boolean> {
@@ -129,7 +142,7 @@ class JellyfinService {
             StartIndex: String(options?.startIndex ?? 0),
             SortBy: options?.sortBy ?? "SortName",
             SortOrder: options?.sortOrder ?? "Ascending",
-            Fields: options?.fields ?? "PrimaryImageAspectRatio,BasicSyncInfo,Overview,Genres,People,Studios,MediaStreams,CommunityRating",
+            Fields: options?.fields ?? "PrimaryImageAspectRatio,BasicSyncInfo,Overview,Genres,People,Studios,MediaStreams,CommunityRating,UserData",
             Recursive: "true",
             IncludeItemTypes: "Movie,Series,BoxSet,Book",
             ImageTypeLimit: "1",
@@ -163,7 +176,7 @@ class JellyfinService {
     async getItem(itemId: string): Promise<JellyfinItem> {
         const params = new URLSearchParams({
             Fields:
-                "Overview,Genres,People,Studios,MediaStreams,MediaSources,CommunityRating,OfficialRating",
+                "Overview,Genres,People,Studios,MediaStreams,MediaSources,CommunityRating,OfficialRating,UserData",
         });
         const res = await fetch(
             `${JELLYFIN_BASE}/Users/${this.userId}/Items/${itemId}?${params}`,
@@ -192,7 +205,7 @@ class JellyfinService {
     ): Promise<JellyfinItem[]> {
         const params = new URLSearchParams({
             SeasonId: seasonId,
-            Fields: "Overview,PrimaryImageAspectRatio,MediaStreams,MediaSources",
+            Fields: "Overview,PrimaryImageAspectRatio,MediaStreams,MediaSources,UserData",
             EnableImageTypes: "Primary,Screenshot",
             UserId: this.userId!,
         });
@@ -227,31 +240,56 @@ class JellyfinService {
 
     getStreamUrl(
         itemId: string,
+        mediaSourceId?: string,
+        playSessionId?: string,
         options?: {
             maxBitrate?: number;
             audioStreamIndex?: number;
             subtitleStreamIndex?: number;
+            startTimeTicks?: number;
         }
     ): string {
+        const hasSubtitles = options?.subtitleStreamIndex !== undefined && options.subtitleStreamIndex !== -1;
+
         const params = new URLSearchParams({
             UserId: this.userId!,
             DeviceId: this.deviceId,
-            MaxStreamingBitrate: String(options?.maxBitrate ?? 120000000),
+            PlaySessionId: playSessionId ?? "",
+            MaxStreamingBitrate: String(options?.maxBitrate ?? 10000000), // 10 Mbps
             Container: "ts",
-            AudioCodec: "aac,mp3",
+            AudioCodec: "mp3",
             VideoCodec: "h264",
+            VideoBitrate: "10000000", // 10 Mbps
+            AudioBitrate: "320000",
+            AudioSampleRate: "48000",
             TranscodingMaxAudioChannels: "2",
             SegmentContainer: "ts",
-            MinSegments: "1",
-            BreakOnNonKeyFrames: "true",
+            StartTimeTicks: "0",
+            AllowVideoStreamCopy: "false",
+            AllowAudioStreamCopy: "false",
+            EnableDirectPlay: "false",
+            EnableDirectStream: "false",
             "api_key": this.accessToken!,
         });
+
+
+        if (mediaSourceId) {
+            params.set("MediaSourceId", mediaSourceId);
+        }
         if (options?.audioStreamIndex !== undefined) {
             params.set("AudioStreamIndex", String(options.audioStreamIndex));
+            // Force transcoding to ensure the selected track is used
+            params.set("AllowAudioStreamCopy", "false");
         }
-        if (options?.subtitleStreamIndex !== undefined) {
+        if (options?.subtitleStreamIndex !== undefined && options.subtitleStreamIndex !== -1) {
             params.set("SubtitleStreamIndex", String(options.subtitleStreamIndex));
+            // Force burn-in for subtitles to ensure they appear
+            params.set("SubtitleMethod", "Encode");
         }
+
+        // Anti-cache
+        params.set("t", String(Date.now()));
+
         return `${JELLYFIN_BASE}/Videos/${itemId}/master.m3u8?${params}`;
     }
 
@@ -313,7 +351,7 @@ class JellyfinService {
     async getResumable(limit = 12): Promise<JellyfinItem[]> {
         const params = new URLSearchParams({
             Limit: String(limit),
-            Fields: "PrimaryImageAspectRatio,Overview",
+            Fields: "PrimaryImageAspectRatio,Overview,UserData",
             MediaTypes: "Video",
             EnableImageTypes: "Primary,Backdrop,Logo",
             ImageTypeLimit: "1",
@@ -343,6 +381,62 @@ class JellyfinService {
         );
         const data: ItemsResponse = await res.json();
         return data.Items;
+    }
+
+    // Playback reporting
+    async startPlayback(itemId: string, mediaSourceId: string): Promise<void> {
+        try {
+            await fetch(`${JELLYFIN_BASE}/Sessions/Playing`, {
+                method: "POST",
+                headers: this.headers,
+                body: JSON.stringify({ ItemId: itemId, MediaSourceId: mediaSourceId }),
+            });
+        } catch (e) {
+            console.error("startPlayback error:", e);
+        }
+    }
+
+    async onPlaybackProgress(itemId: string, mediaSourceId: string, positionTicks: number): Promise<void> {
+        try {
+            await fetch(`${JELLYFIN_BASE}/Sessions/Playing/Progress`, {
+                method: "POST",
+                headers: this.headers,
+                body: JSON.stringify({ ItemId: itemId, MediaSourceId: mediaSourceId, PositionTicks: positionTicks }),
+            });
+        } catch (e) {
+            console.error("onPlaybackProgress error:", e);
+        }
+    }
+
+    async stopPlayback(itemId: string, mediaSourceId: string, positionTicks: number): Promise<void> {
+        try {
+            await fetch(`${JELLYFIN_BASE}/Sessions/Playing/Stopped`, {
+                method: "POST",
+                headers: this.headers,
+                body: JSON.stringify({ ItemId: itemId, MediaSourceId: mediaSourceId, PositionTicks: positionTicks }),
+            });
+        } catch (e) {
+            console.error("stopPlayback error:", e);
+        }
+    }
+
+    async getNextUp(seriesId: string): Promise<JellyfinItem | null> {
+        try {
+            const params = new URLSearchParams({
+                SeriesId: seriesId,
+                Fields: "Overview,PrimaryImageAspectRatio,MediaStreams,MediaSources,UserData",
+                UserId: this.userId!,
+                Limit: "1",
+            });
+            const res = await fetch(
+                `${JELLYFIN_BASE}/Shows/NextUp?${params}`,
+                { headers: this.headers }
+            );
+            const data: ItemsResponse = await res.json();
+            return data.Items?.[0] ?? null;
+        } catch {
+            return null;
+        }
     }
 }
 

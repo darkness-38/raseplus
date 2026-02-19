@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { jellyfin, JellyfinItem, LIBRARY_IDS } from "@/lib/jellyfin";
 import { useStore } from "@/store/useStore";
-import { filterForKids } from "@/lib/profiles";
+import { filterForKids, filterAdultContent } from "@/lib/profiles";
 import ContentCard from "@/components/ContentCard";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -11,6 +11,7 @@ export default function SearchPage() {
     const isReady = useStore((s) => s.isJellyfinReady);
     const activeProfile = useStore((s) => s.activeProfile);
     const isKids = activeProfile?.isKids ?? false;
+    const allowAdult = activeProfile?.allowAdultContent ?? false;
 
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<JellyfinItem[]>([]);
@@ -58,9 +59,9 @@ export default function SearchPage() {
                 const a = isKids ? filterForKids(anime.Items) : anime.Items;
                 const s = isKids ? filterForKids(series.Items) : series.Items;
 
-                setSuggestedMovies(m);
-                setSuggestedAnime(a);
-                setSuggestedSeries(s);
+                setSuggestedMovies(filterAdultContent(m, allowAdult));
+                setSuggestedAnime(filterAdultContent(a, allowAdult));
+                setSuggestedSeries(filterAdultContent(s, allowAdult));
             } catch (e) {
                 console.error("Failed to fetch explore content:", e);
             } finally {
@@ -82,7 +83,8 @@ export default function SearchPage() {
             setHasSearched(true);
             try {
                 const items = await jellyfin.searchItems(searchQuery, 50);
-                const filtered = isKids ? filterForKids(items) : items;
+                let filtered = isKids ? filterForKids(items) : items;
+                filtered = filterAdultContent(filtered, allowAdult);
                 setResults(filtered);
             } catch (e) {
                 console.error("Search failed:", e);
@@ -231,8 +233,8 @@ export default function SearchPage() {
                             {results.length} result{results.length !== 1 ? "s" : ""}
                         </p>
                         <div className={`grid gap-3 sm:gap-4 ${results.some(r => getVariant(r) === "horizontal")
-                                ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-                                : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
+                            ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                            : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
                             }`}>
                             {results.map((item, i) => (
                                 <ContentCard key={item.Id} item={item} index={i} variant={getVariant(item)} />

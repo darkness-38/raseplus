@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { jellyfin, JellyfinItem, LIBRARY_IDS } from "@/lib/jellyfin";
 import { useStore } from "@/store/useStore";
-import { filterForKids } from "@/lib/profiles";
+import { filterForKids, filterAdultContent } from "@/lib/profiles";
 import HeroBanner from "@/components/HeroBanner";
 import ContentRow from "@/components/ContentRow";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function BrowsePage() {
     const isReady = useStore((s) => s.isJellyfinReady);
     const activeProfile = useStore((s) => s.activeProfile);
+    const { config: cfg } = useSiteConfig();
     const isKids = activeProfile?.isKids ?? false;
+    const allowAdult = activeProfile?.allowAdultContent ?? false;
 
     const [heroItems, setHeroItems] = useState<JellyfinItem[]>([]);
     const [trendingAnime, setTrendingAnime] = useState<JellyfinItem[]>([]);
@@ -39,10 +42,16 @@ export default function BrowsePage() {
                     jellyfin.getResumable(20),
                 ]);
 
-                const animeItems = isKids ? filterForKids(anime.Items) : anime.Items;
-                const movieItems = isKids ? filterForKids(movies.Items) : movies.Items;
-                const seriesItems = isKids ? filterForKids(series) : series;
-                const resumeFiltered = isKids ? filterForKids(resume) : resume;
+                let animeItems = isKids ? filterForKids(anime.Items) : anime.Items;
+                let movieItems = isKids ? filterForKids(movies.Items) : movies.Items;
+                let seriesItems = isKids ? filterForKids(series) : series;
+                let resumeFiltered = isKids ? filterForKids(resume) : resume;
+
+                // Adult content filter
+                animeItems = filterAdultContent(animeItems, allowAdult);
+                movieItems = filterAdultContent(movieItems, allowAdult);
+                seriesItems = filterAdultContent(seriesItems, allowAdult);
+                resumeFiltered = filterAdultContent(resumeFiltered, allowAdult);
 
                 setTrendingAnime(animeItems.slice(0, 20));
                 setPopularMovies(movieItems.slice(0, 20));
@@ -97,11 +106,11 @@ export default function BrowsePage() {
             <HeroBanner items={heroItems} />
             <div className="relative z-10 -mt-20 space-y-10 pb-20">
                 {resumeItems.length > 0 && (
-                    <ContentRow title="Continue Watching" items={resumeItems} variant="horizontal" />
+                    <ContentRow title={cfg.browse.continueWatchingTitle} items={resumeItems} variant="horizontal" />
                 )}
-                <ContentRow title="Trending Anime" items={trendingAnime} variant="vertical" />
-                <ContentRow title="Popular Movies" items={popularMovies} variant="horizontal" />
-                <ContentRow title="Latest Series" items={latestSeries} variant="horizontal" />
+                <ContentRow title={cfg.browse.trendingAnimeTitle} items={trendingAnime} variant="vertical" />
+                <ContentRow title={cfg.browse.popularMoviesTitle} items={popularMovies} variant="horizontal" />
+                <ContentRow title={cfg.browse.latestSeriesTitle} items={latestSeries} variant="horizontal" />
             </div>
         </div>
     );

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function RegisterPage() {
     const [email, setEmail] = useState("");
@@ -15,6 +16,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const { signUp } = useAuth();
     const router = useRouter();
+    const { config: cfg } = useSiteConfig();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,8 +68,8 @@ export default function RegisterPage() {
                 <Link href="/" className="flex items-center justify-center mb-8">
                     <div className="relative h-12 w-40">
                         <Image
-                            src="/logo.png"
-                            alt="Rase+"
+                            src={cfg.logoUrl}
+                            alt={cfg.siteName}
                             fill
                             className="object-contain"
                             priority
@@ -84,8 +86,8 @@ export default function RegisterPage() {
                         boxShadow: "0 0 60px rgba(13,214,232,0.06)",
                     }}
                 >
-                    <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 font-heading">Create your account</h1>
-                    <p className="text-sm mb-6 sm:mb-8" style={{ color: "rgba(255,255,255,0.4)" }}>Start streaming in seconds</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 font-heading">{cfg.auth.registerTitle}</h1>
+                    <p className="text-sm mb-6 sm:mb-8" style={{ color: "rgba(255,255,255,0.4)" }}>{cfg.auth.registerSubtitle}</p>
 
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                         {error && (
@@ -105,6 +107,7 @@ export default function RegisterPage() {
                                 className="w-full px-4 py-3 rounded-xl text-white transition-all focus:outline-none"
                                 placeholder="you@example.com" style={inputStyle}
                                 onFocus={handleFocus} onBlur={handleBlur}
+                                suppressHydrationWarning
                             />
                         </div>
 
@@ -115,6 +118,7 @@ export default function RegisterPage() {
                                 className="w-full px-4 py-3 rounded-xl text-white transition-all focus:outline-none"
                                 placeholder="••••••••" style={inputStyle}
                                 onFocus={handleFocus} onBlur={handleBlur}
+                                suppressHydrationWarning
                             />
                         </div>
 
@@ -125,6 +129,7 @@ export default function RegisterPage() {
                                 className="w-full px-4 py-3 rounded-xl text-white transition-all focus:outline-none"
                                 placeholder="••••••••" style={inputStyle}
                                 onFocus={handleFocus} onBlur={handleBlur}
+                                suppressHydrationWarning
                             />
                         </div>
 

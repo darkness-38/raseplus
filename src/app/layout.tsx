@@ -1,25 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, DM_Sans } from "next/font/google";
+import { Outfit } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const outfit = Outfit({
+  variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
-});
-
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["300", "400", "500", "700", "900"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Rase+ | Unlimited Entertainment",
   description:
-    "Stream anime, movies, TV series and read manga — all in one premium platform.",
+    "Stream anime, movies, TV series — all in one premium platform.",
 };
 
 export default function RootLayout({
@@ -30,13 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        {/* Satoshi font from FontShare */}
+        {/* Google Sans Flex via Fontsource CDN */}
         <link
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className={`${inter.variable} ${dmSans.variable} antialiased bg-background text-foreground`}>
+      <body className={`${outfit.variable} antialiased bg-background text-foreground`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

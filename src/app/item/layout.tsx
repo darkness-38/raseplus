@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import VideoPlayer from "@/components/VideoPlayer";
-import MangaReader from "@/components/MangaReader";
 import { useStore } from "@/store/useStore";
 import { AnimatePresence } from "framer-motion";
 
@@ -16,7 +15,7 @@ export default function ItemLayout({
 }) {
     const { user, loading } = useAuth();
     const router = useRouter();
-    const { isPlayerOpen, isReaderOpen } = useStore();
+    const { isPlayerOpen } = useStore();
 
     useEffect(() => {
         if (!loading && !user) {
@@ -39,7 +38,6 @@ export default function ItemLayout({
             <Navbar />
             {children}
             <AnimatePresence>{isPlayerOpen && <VideoPlayer />}</AnimatePresence>
-            <AnimatePresence>{isReaderOpen && <MangaReader />}</AnimatePresence>
         </div>
     );
 }

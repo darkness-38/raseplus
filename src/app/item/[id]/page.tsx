@@ -20,18 +20,18 @@ function formatRuntime(ticks?: number): string {
 export default function ItemDetailPage({ params }: PageProps) {
     const { id } = use(params);
     const isReady = useStore((s) => s.isJellyfinReady);
-    const { openPlayer, openReader, setNextEpisode } = useStore();
+    const { openPlayer, setNextEpisode } = useStore();
 
     const [item, setItem] = useState<JellyfinItem | null>(null);
     const [seasons, setSeasons] = useState<JellyfinItem[]>([]);
     const [episodes, setEpisodes] = useState<JellyfinItem[]>([]);
     const [selectedSeason, setSelectedSeason] = useState<string>("");
     const [similar, setSimilar] = useState<JellyfinItem[]>([]);
+    const [nextUp, setNextUp] = useState<JellyfinItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [imageError, setImageError] = useState(false);
 
     const isSeries = item?.Type === "Series";
-    const isManga = item?.Type === "Book" || item?.Type === "BoxSet";
     const isMovie = item?.Type === "Movie";
 
     useEffect(() => {
@@ -42,8 +42,12 @@ export default function ItemDetailPage({ params }: PageProps) {
                 setItem(data);
 
                 if (data.Type === "Series") {
-                    const s = await jellyfin.getSeasons(id);
+                    const [s, nu] = await Promise.all([
+                        jellyfin.getSeasons(id),
+                        jellyfin.getNextUp(id),
+                    ]);
                     setSeasons(s);
+                    setNextUp(nu);
                     if (s.length > 0) {
                         setSelectedSeason(s[0].Id);
                     }
@@ -185,23 +189,59 @@ export default function ItemDetailPage({ params }: PageProps) {
                         {isMovie && (
                             <button
                                 onClick={() => openPlayer(item.Id, item.Name)}
-                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold"
+                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden"
                             >
+                                {/* Progress bar on movie button */}
+                                {item.UserData?.PlayedPercentage != null && item.UserData.PlayedPercentage > 0 && item.UserData.PlayedPercentage < 100 && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                                        <div
+                                            className="h-full rounded-r-full"
+                                            style={{
+                                                width: `${item.UserData.PlayedPercentage}%`,
+                                                background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
+                                            }}
+                                        />
+                                    </div>
+                                )}
                                 <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M8 5v14l11-7z" />
                                 </svg>
-                                Play
+                                {item.UserData?.PlayedPercentage != null && item.UserData.PlayedPercentage > 0 && item.UserData.PlayedPercentage < 100
+                                    ? "Resume"
+                                    : "Play"
+                                }
                             </button>
                         )}
-                        {isManga && (
+                        {isSeries && (
                             <button
-                                onClick={() => openReader(item.Id, item.Name)}
-                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold"
+                                onClick={() => {
+                                    if (nextUp) {
+                                        openPlayer(nextUp.Id, `${item.Name} - ${nextUp.Name}`);
+                                    } else if (episodes.length > 0) {
+                                        handlePlayEpisode(episodes[0], 0);
+                                    }
+                                }}
+                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden"
                             >
-                                <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                {/* Progress bar on series play button */}
+                                {nextUp?.UserData?.PlayedPercentage != null && nextUp.UserData.PlayedPercentage > 0 && nextUp.UserData.PlayedPercentage < 100 && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                                        <div
+                                            className="h-full rounded-r-full"
+                                            style={{
+                                                width: `${nextUp.UserData.PlayedPercentage}%`,
+                                                background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                                <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
                                 </svg>
-                                Read
+                                {nextUp
+                                    ? `Resume S${nextUp.ParentIndexNumber ?? 1}:E${nextUp.IndexNumber ?? 1}`
+                                    : "Play S1:E1"
+                                }
                             </button>
                         )}
                     </div>
@@ -342,6 +382,18 @@ export default function ItemDetailPage({ params }: PageProps) {
                                                             </svg>
                                                         </div>
                                                     </div>
+                                                    {/* Episode progress bar */}
+                                                    {ep.UserData?.PlayedPercentage != null && ep.UserData.PlayedPercentage > 0 && (
+                                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+                                                            <div
+                                                                className="h-full rounded-r-full"
+                                                                style={{
+                                                                    width: `${Math.min(ep.UserData.PlayedPercentage, 100)}%`,
+                                                                    background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 

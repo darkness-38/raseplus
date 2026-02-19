@@ -8,13 +8,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { emojiToUrl } from "@/lib/profiles";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 const navLinks = [
     { href: "/browse", label: "Home" },
     { href: "/browse/series", label: "Series" },
     { href: "/browse/anime", label: "Anime" },
     { href: "/browse/movies", label: "Movies" },
-    { href: "/browse/manga", label: "Manga" },
+
 ];
 
 export default function Navbar() {
@@ -26,6 +27,7 @@ export default function Navbar() {
 
     const [scrolled, setScrolled] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const { config: cfg } = useSiteConfig();
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -62,8 +64,8 @@ export default function Navbar() {
                                 className="relative h-8 w-24 sm:h-9 sm:w-28"
                             >
                                 <Image
-                                    src="/logo.png"
-                                    alt="Rase+"
+                                    src={cfg.logoUrl}
+                                    alt={cfg.siteName}
                                     fill
                                     className="object-contain"
                                     priority

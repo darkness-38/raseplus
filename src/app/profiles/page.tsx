@@ -8,11 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getProfiles, createProfile, deleteProfile, Profile, AVATARS, MAX_PROFILES, emojiToUrl } from "@/lib/profiles";
 import ProfileModal from "@/components/ProfileModal";
 import Image from "next/image";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function ProfilesPage() {
     const { user } = useAuth();
     const { setActiveProfile } = useStore();
     const router = useRouter();
+    const { config: cfg } = useSiteConfig();
 
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -112,8 +114,8 @@ export default function ProfilesPage() {
             >
                 <div className="relative h-12 w-40">
                     <Image
-                        src="/logo.png"
-                        alt="Rase+"
+                        src={cfg.logoUrl}
+                        alt={cfg.siteName}
                         fill
                         className="object-contain"
                         priority
