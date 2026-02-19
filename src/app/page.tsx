@@ -276,8 +276,7 @@ export default function LandingPage() {
         {/* Hero Background Image with radial mask */}
         <div className="absolute inset-0">
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-[115%] max-w-[1610px]"
-            style={{ aspectRatio: "1.94 / 1" }}
+            className="absolute inset-0 w-full h-full"
           >
             <img
               src="https://framerusercontent.com/images/t4f5xYCMGAy0IWkXyZw55QaEqOA.webp"
