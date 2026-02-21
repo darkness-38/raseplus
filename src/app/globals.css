@@ -258,3 +258,40 @@ body {
 .font-body {
   font-family: 'DM Sans', var(--font-sans), sans-serif;
 }
+
+/* ─── Video Player Volume Slider ─── */
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 100%;
+}
+
+.volume-slider::-moz-range-track {
+  background: transparent;
+  height: 100%;
+}

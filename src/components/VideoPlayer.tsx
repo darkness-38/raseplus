@@ -1,14 +1,130 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { useStore } from "@/store/useStore";
 import { jellyfin } from "@/lib/jellyfin";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ─── Sample Ad URLs (replace with real ad URLs) ───
+const AD_VIDEOS = [
+    "https://storage.googleapis.com/gvabox/media/samples/ElephantsDream.mp4",
+    "https://storage.googleapis.com/gvabox/media/samples/BigBuckBunny.mp4",
+    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerBlazes.mp4",
+    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerEscapes.mp4",
+    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerFun.mp4",
+];
+
+function getAdSchedule(durationSeconds: number): number[] {
+    // Returns array of cue times (in seconds) for mid-roll ads
+    const durationMinutes = durationSeconds / 60;
+    let midRollCount = 0;
+    if (durationMinutes >= 120) midRollCount = 4;
+    else if (durationMinutes >= 90) midRollCount = 3;
+    else if (durationMinutes >= 60) midRollCount = 2;
+    else if (durationMinutes >= 20) midRollCount = 1;
+
+    const cuePoints: number[] = [];
+    if (midRollCount > 0) {
+        const interval = durationSeconds / (midRollCount + 1);
+        for (let i = 1; i <= midRollCount; i++) {
+            cuePoints.push(Math.floor(interval * i));
+        }
+    }
+    return cuePoints;
+}
+
+function pickRandomAd(): string {
+    return AD_VIDEOS[Math.floor(Math.random() * AD_VIDEOS.length)];
+}
+
+// ─── Icons ───
+const PlayIcon = ({ size = 36 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z" />
+    </svg>
+);
+
+const PauseIcon = ({ size = 36 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+    </svg>
+);
+
+const Replay10Icon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="drop-shadow-md">
+        <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+        <text x="10" y="16.5" fontSize="7.5" fontWeight="bold" textAnchor="middle" fill="currentColor" fontFamily="system-ui">10</text>
+    </svg>
+);
+
+const Forward10Icon = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="drop-shadow-md">
+        <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z" />
+        <text x="13" y="16.5" fontSize="7.5" fontWeight="bold" textAnchor="middle" fill="currentColor" fontFamily="system-ui">10</text>
+    </svg>
+);
+
+const FullscreenIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+);
+
+const ExitFullscreenIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V3.75M9 9H3.75M9 9L3.75 3.75M9 15v5.25M9 15H3.75M9 15l-5.25 5.25M15 9h5.25M15 9V3.75M15 9l5.25-5.25M15 15h5.25M15 15v5.25M15 15l5.25 5.25" />
+    </svg>
+);
+
+const VolumeHighIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+    </svg>
+);
+
+const VolumeLowIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+    </svg>
+);
+
+const VolumeMutedIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+    </svg>
+);
+
+const BackIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white group-hover:scale-110 transition-transform">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+);
+
+const CheckIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+);
+
+const SettingsIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+);
+
+const NextIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+    </svg>
+);
+
+// ─── Main Component ───
 export default function VideoPlayer() {
     const { playerItemId, playerTitle, closePlayer, nextEpisodeId, nextEpisodeTitle, openPlayer } = useStore();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const adVideoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const hlsRef = useRef<Hls | null>(null);
 
@@ -22,57 +138,78 @@ export default function VideoPlayer() {
     const [isLoading, setIsLoading] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [activeTab, setActiveTab] = useState<"quality" | "audio" | "subtitles">("quality");
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Track state (Metadata)
     const [qualities, setQualities] = useState<{ index: number; height: number; bitrate: number }[]>([]);
-    const [currentQuality, setCurrentQuality] = useState(-1); // -1 = auto
+    const [currentQuality, setCurrentQuality] = useState(-1);
     const [audioTracks, setAudioTracks] = useState<{ index: number; name: string; lang?: string }[]>([]);
     const [currentAudio, setCurrentAudio] = useState<number | undefined>(undefined);
     const [subtitles, setSubtitles] = useState<{ index: number; name: string; lang?: string }[]>([]);
     const [currentSubtitle, setCurrentSubtitle] = useState<number | undefined>(undefined);
 
     const [mediaSourceId, setMediaSourceId] = useState<string | null>(null);
-    // Removed persistent playSessionId state
+
+    // Skip flash effect
+    const [skipFlash, setSkipFlash] = useState<'left' | 'right' | null>(null);
+    const skipFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Pause animation
+    const [showPauseIndicator, setShowPauseIndicator] = useState(false);
+
+    // Ad system state
+    const [isAdPlaying, setIsAdPlaying] = useState(false);
+    const [adCurrentTime, setAdCurrentTime] = useState(0);
+    const [adDuration, setAdDuration] = useState(0);
+    const [adCuePoints, setAdCuePoints] = useState<number[]>([]);
+    const [consumedCuePoints, setConsumedCuePoints] = useState<Set<number>>(new Set());
+    const [preRollDone, setPreRollDone] = useState(false);
+    const [savedVideoTime, setSavedVideoTime] = useState(0);
+    const adStartedRef = useRef(false);
 
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastTimeRef = useRef<number>(0);
 
-    // 1. Fetch Metadata & Setup Tracks
+    // ─── 1. Fetch Metadata & Setup Tracks ───
     useEffect(() => {
         if (!playerItemId) return;
+
+        // Reset ad state for new video
+        setPreRollDone(false);
+        setAdCuePoints([]);
+        setConsumedCuePoints(new Set());
+        setIsAdPlaying(false);
+        adStartedRef.current = false;
 
         const fetchMetadata = async () => {
             try {
                 setIsLoading(true);
                 const item = await jellyfin.getItem(playerItemId);
-                console.log("[VideoPlayer] Metadata loaded:", item);
 
                 const source = item.MediaSources?.[0];
                 const sourceId = source?.Id ?? playerItemId;
                 setMediaSourceId(sourceId);
 
-                console.log("[VideoPlayer] MediaStreams:", source?.MediaStreams);
-
                 if (source?.MediaStreams) {
-                    const audio = source.MediaStreams.filter(s => s.Type === "Audio").map(s => ({
+                    const audio = source.MediaStreams.filter((s: any) => s.Type === "Audio").map((s: any) => ({
                         index: s.Index,
                         name: s.DisplayTitle || s.Title || s.Language || `Audio ${s.Index}`,
                         lang: s.Language
                     }));
                     setAudioTracks(audio);
 
-                    const defaultAudio = source.MediaStreams.find(s => s.Type === "Audio" && s.IsDefault);
+                    const defaultAudio = source.MediaStreams.find((s: any) => s.Type === "Audio" && s.IsDefault);
                     if (defaultAudio) setCurrentAudio(defaultAudio.Index);
                     else if (audio.length > 0) setCurrentAudio(audio[0].index);
 
-                    const subs = source.MediaStreams.filter(s => s.Type === "Subtitle").map(s => ({
+                    const subs = source.MediaStreams.filter((s: any) => s.Type === "Subtitle").map((s: any) => ({
                         index: s.Index,
                         name: s.DisplayTitle || s.Title || s.Language || `Subtitle ${s.Index}`,
                         lang: s.Language
                     }));
                     setSubtitles(subs);
 
-                    const defaultSub = source.MediaStreams.find(s => s.Type === "Subtitle" && s.IsDefault);
+                    const defaultSub = source.MediaStreams.find((s: any) => s.Type === "Subtitle" && s.IsDefault);
                     if (defaultSub) setCurrentSubtitle(defaultSub.Index);
                     else setCurrentSubtitle(undefined);
                 }
@@ -86,20 +223,13 @@ export default function VideoPlayer() {
         fetchMetadata();
     }, [playerItemId]);
 
-    // 2. Load/Reload Stream when Source or Tracks change
+    // ─── 2. Load/Reload Stream ───
     useEffect(() => {
         if (!playerItemId || !mediaSourceId || !videoRef.current) return;
 
-        // Don't load stream until we have determined initial audio/subs (to avoid double load)
-        // We can check if audioTracks is populated if we expect them, but simpler is just to depend on state.
-        // However, we need to handle the case where we just loaded metadata and are setting state.
-
         const loadStream = () => {
-            // 1. Capture current time using REF (reliable across re-renders/cleanups where videoRef might be reset)
             const savedTime = lastTimeRef.current;
             const currentTicks = Math.floor(savedTime * 10000000);
-
-            console.log("[VideoPlayer] Reloading stream. Saved Time:", savedTime, "s (", currentTicks, "ticks)");
 
             setIsLoading(true);
             if (hlsRef.current) {
@@ -107,7 +237,6 @@ export default function VideoPlayer() {
                 hlsRef.current = null;
             }
 
-            // Generate a fresh session ID for every stream load to force server to respect new track selection
             const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
 
             const streamUrl = jellyfin.getStreamUrl(playerItemId, mediaSourceId, sessionId, {
@@ -115,9 +244,6 @@ export default function VideoPlayer() {
                 subtitleStreamIndex: currentSubtitle,
                 startTimeTicks: currentTicks
             });
-
-            console.log("[VideoPlayer] Loading stream with SessionId:", sessionId);
-            console.log("[VideoPlayer] URL:", streamUrl);
 
             if (Hls.isSupported()) {
                 const hls = new Hls({
@@ -132,25 +258,26 @@ export default function VideoPlayer() {
 
                 hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
                     setIsLoading(false);
-                    console.log("[VideoPlayer] Manifest Parsed. Resuming at:", savedTime);
 
-                    // Force client-side seek if server didn't start at the right time
                     if (savedTime > 0 && videoRef.current) {
                         videoRef.current.currentTime = savedTime;
                     }
 
-                    videoRef.current?.play().catch(e => console.error("Play failed:", e));
+                    // Don't auto-play if we need pre-roll
+                    if (!preRollDone && !adStartedRef.current) {
+                        // Start pre-roll ad
+                        adStartedRef.current = true;
+                        startAd();
+                    } else {
+                        videoRef.current?.play().catch(e => console.error("Play failed:", e));
+                    }
 
-                    // Get Quality Levels (Client side from HLS manifest)
                     const levels = hls.levels.map((l, i) => ({
                         index: i,
                         height: l.height,
                         bitrate: l.bitrate
                     })).sort((a, b) => b.height - a.height);
                     setQualities(levels);
-
-                    // NOTE: We do NOT overwrite audio/subs from HLS manifest anymore
-                    // as we are managing them server-side via query params.
                 });
 
                 hls.on(Hls.Events.ERROR, (_, data) => {
@@ -173,7 +300,12 @@ export default function VideoPlayer() {
                 videoRef.current.src = streamUrl;
                 videoRef.current.addEventListener("loadedmetadata", () => {
                     setIsLoading(false);
-                    videoRef.current?.play();
+                    if (!preRollDone && !adStartedRef.current) {
+                        adStartedRef.current = true;
+                        startAd();
+                    } else {
+                        videoRef.current?.play();
+                    }
                 });
             }
         };
@@ -198,24 +330,80 @@ export default function VideoPlayer() {
         };
     }, [playerItemId, mediaSourceId]);
 
-    // Handle Controls Visibility
-    const showControls = () => {
+    // ─── Fullscreen change listener ───
+    useEffect(() => {
+        const handleFSChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener("fullscreenchange", handleFSChange);
+        return () => document.removeEventListener("fullscreenchange", handleFSChange);
+    }, []);
+
+    // ─── Controls Visibility ───
+    const showControls = useCallback(() => {
         setIsControlsVisible(true);
         if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
         controlTimeoutRef.current = setTimeout(() => {
-            if (!showSettings && playing) setIsControlsVisible(false);
+            if (!showSettings && playing && !isAdPlaying) setIsControlsVisible(false);
         }, 3000);
-    };
+    }, [showSettings, playing, isAdPlaying]);
 
+    // ─── Skip Flash ───
+    const triggerSkipFlash = useCallback((direction: 'left' | 'right') => {
+        if (skipFlashTimeoutRef.current) clearTimeout(skipFlashTimeoutRef.current);
+        setSkipFlash(direction);
+        skipFlashTimeoutRef.current = setTimeout(() => setSkipFlash(null), 600);
+    }, []);
+
+    // ─── Keyboard Controls ───
     useEffect(() => {
-        const handleMouseMove = () => showControls();
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Block all controls during ads
+            if (isAdPlaying) {
+                e.preventDefault();
+                return;
+            }
+
             showControls();
-            if (e.key === "ArrowRight") seek(10);
-            if (e.key === "ArrowLeft") seek(-10);
-            if (e.key === " ") togglePlay();
+
+            if (e.key === "ArrowRight") {
+                e.preventDefault();
+                if (videoRef.current) {
+                    const vid = videoRef.current;
+                    vid.currentTime = Math.min(vid.currentTime + 10, vid.duration || Infinity);
+                    triggerSkipFlash('right');
+                }
+            }
+            if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                if (videoRef.current) {
+                    videoRef.current.currentTime = Math.max(videoRef.current.currentTime - 10, 0);
+                    triggerSkipFlash('left');
+                }
+            }
+            if (e.key === " ") {
+                e.preventDefault();
+                if (videoRef.current) {
+                    if (videoRef.current.paused) videoRef.current.play();
+                    else videoRef.current.pause();
+                }
+            }
+            if (e.key === "f" || e.key === "F") {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    containerRef.current?.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+            if (e.key === "m" || e.key === "M") {
+                e.preventDefault();
+                toggleMute();
+            }
             if (e.key === "Escape") closePlayer();
         };
+
+        const handleMouseMove = () => showControls();
 
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("keydown", handleKeyDown);
@@ -224,24 +412,101 @@ export default function VideoPlayer() {
             window.removeEventListener("keydown", handleKeyDown);
             if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
         };
-    }, [playing, showSettings]);
+    }, [playing, showSettings, isAdPlaying, showControls, triggerSkipFlash, closePlayer]);
 
-    // Video Events
+    // ─── Video Events ───
     const handleTimeUpdate = () => {
-        if (videoRef.current) {
+        if (videoRef.current && !isAdPlaying) {
             const time = videoRef.current.currentTime;
             setCurrentTime(time);
             lastTimeRef.current = time;
             setDuration(videoRef.current.duration || 0);
+
+            // Check for mid-roll ad cue points
+            if (preRollDone && adCuePoints.length > 0) {
+                for (const cue of adCuePoints) {
+                    if (!consumedCuePoints.has(cue) && time >= cue && time < cue + 2) {
+                        // Trigger mid-roll
+                        setConsumedCuePoints(prev => new Set([...prev, cue]));
+                        setSavedVideoTime(time);
+                        videoRef.current.pause();
+                        startAd();
+                        break;
+                    }
+                }
+            }
         }
     };
 
+    // When duration is first known, calculate ad cue points
+    useEffect(() => {
+        if (duration > 0 && adCuePoints.length === 0 && preRollDone) {
+            const cues = getAdSchedule(duration);
+            setAdCuePoints(cues);
+        }
+    }, [duration, preRollDone]);
+
     const handlePlayPause = () => {
-        setPlaying(!videoRef.current?.paused);
+        const isPaused = videoRef.current?.paused ?? true;
+        setPlaying(!isPaused);
+        setShowPauseIndicator(isPaused);
     };
 
-    // Actions
-    const togglePlay = () => {
+    // ─── Ad System ───
+    const startAd = useCallback(() => {
+        setIsAdPlaying(true);
+        setAdCurrentTime(0);
+        setAdDuration(0);
+        setIsControlsVisible(false);
+
+        // Save current video time
+        if (videoRef.current) {
+            setSavedVideoTime(videoRef.current.currentTime);
+            videoRef.current.pause();
+        }
+
+        // Load ad video
+        const adUrl = pickRandomAd();
+        if (adVideoRef.current) {
+            adVideoRef.current.src = adUrl;
+            adVideoRef.current.load();
+            adVideoRef.current.play().catch(e => console.error("Ad play failed:", e));
+        }
+    }, []);
+
+    const handleAdTimeUpdate = () => {
+        if (adVideoRef.current) {
+            setAdCurrentTime(adVideoRef.current.currentTime);
+            setAdDuration(adVideoRef.current.duration || 0);
+        }
+    };
+
+    const handleAdEnded = useCallback(() => {
+        setIsAdPlaying(false);
+        setAdCurrentTime(0);
+        setAdDuration(0);
+
+        if (!preRollDone) {
+            setPreRollDone(true);
+            // Start main video from beginning
+            if (videoRef.current) {
+                videoRef.current.currentTime = 0;
+                videoRef.current.play().catch(e => console.error("Play failed after pre-roll:", e));
+            }
+        } else {
+            // Resume from saved position (mid-roll)
+            if (videoRef.current) {
+                videoRef.current.currentTime = savedVideoTime;
+                videoRef.current.play().catch(e => console.error("Play failed after mid-roll:", e));
+            }
+        }
+
+        showControls();
+    }, [preRollDone, savedVideoTime, showControls]);
+
+    // ─── Actions ───
+    const togglePlay = useCallback(() => {
+        if (isAdPlaying) return;
         if (videoRef.current?.paused) {
             videoRef.current.play();
         } else {
@@ -250,26 +515,29 @@ export default function VideoPlayer() {
                 jellyfin.onPlaybackProgress(playerItemId, mediaSourceId, videoRef.current.currentTime * 10000000);
             }
         }
-    };
+    }, [isAdPlaying, playerItemId, mediaSourceId]);
 
-    const seek = (seconds: number) => {
+    const seekWithFlash = useCallback((seconds: number) => {
+        if (isAdPlaying) return;
         if (videoRef.current) {
-            videoRef.current.currentTime = Math.min(Math.max(videoRef.current.currentTime + seconds, 0), duration);
+            videoRef.current.currentTime = Math.min(Math.max(videoRef.current.currentTime + seconds, 0), videoRef.current.duration || Infinity);
+            triggerSkipFlash(seconds > 0 ? 'right' : 'left');
         }
-    };
+    }, [isAdPlaying, triggerSkipFlash]);
 
-    const seekTo = (time: number) => {
+    const seekTo = useCallback((time: number) => {
+        if (isAdPlaying) return;
         if (videoRef.current) {
             videoRef.current.currentTime = time;
         }
-    };
+    }, [isAdPlaying]);
 
-    const toggleMute = () => {
+    const toggleMute = useCallback(() => {
         if (videoRef.current) {
             videoRef.current.muted = !isMuted;
             setIsMuted(!isMuted);
         }
-    };
+    }, [isMuted]);
 
     const handleVolumeChange = (v: number) => {
         if (videoRef.current) {
@@ -287,12 +555,10 @@ export default function VideoPlayer() {
     };
 
     const changeAudio = (index: number) => {
-        console.log("[VideoPlayer] Changing Audio to:", index);
         setCurrentAudio(index);
     };
 
     const changeSubtitle = (index: number) => {
-        console.log("[VideoPlayer] Changing Subtitle to:", index);
         setCurrentSubtitle(index);
     };
 
@@ -302,14 +568,25 @@ export default function VideoPlayer() {
         }
     };
 
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
     // Helper format
     const formatTime = (time: number) => {
+        if (!isFinite(time) || isNaN(time)) return "0:00";
         const h = Math.floor(time / 3600);
         const m = Math.floor((time % 3600) / 60);
         const s = Math.floor(time % 60);
         if (h > 0) return `${h}:${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
         return `${m}:${s < 10 ? "0" + s : s}`;
     };
+
+    const volumePercent = isMuted ? 0 : Math.round(volume * 100);
 
     return (
         <motion.div
@@ -321,152 +598,297 @@ export default function VideoPlayer() {
             onMouseMove={showControls}
             onClick={() => { if (showSettings) setShowSettings(false); }}
         >
+            {/* Main Video */}
             <video
                 ref={videoRef}
                 className="w-full h-full object-contain"
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={handlePlayPause}
                 onPause={handlePlayPause}
-                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                onClick={(e) => { e.stopPropagation(); if (!isAdPlaying) togglePlay(); }}
+                style={{ display: isAdPlaying ? 'none' : 'block' }}
+            />
+
+            {/* Ad Video (overlay) */}
+            <video
+                ref={adVideoRef}
+                className="w-full h-full object-contain absolute inset-0"
+                onTimeUpdate={handleAdTimeUpdate}
+                onEnded={handleAdEnded}
+                style={{ display: isAdPlaying ? 'block' : 'none' }}
             />
 
             {/* Loading Spinner */}
-            {isLoading && (
+            {isLoading && !isAdPlaying && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
 
-            {/* Controls Overlay */}
+            {/* ─── Skip Flash Effect ─── */}
             <AnimatePresence>
-                {isControlsVisible && (
+                {skipFlash === 'left' && (
+                    <motion.div
+                        key="flash-left"
+                        initial={{ opacity: 0.9 }}
+                        animate={{ opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="absolute inset-y-0 left-0 w-[30%] pointer-events-none z-[101]"
+                        style={{
+                            background: "linear-gradient(to right, rgba(13, 214, 232, 0.35), rgba(13, 214, 232, 0.08), transparent)"
+                        }}
+                    >
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                                initial={{ scale: 0.5, opacity: 0.8 }}
+                                animate={{ scale: 1.5, opacity: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <Replay10Icon />
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+                {skipFlash === 'right' && (
+                    <motion.div
+                        key="flash-right"
+                        initial={{ opacity: 0.9 }}
+                        animate={{ opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="absolute inset-y-0 right-0 w-[30%] pointer-events-none z-[101]"
+                        style={{
+                            background: "linear-gradient(to left, rgba(13, 214, 232, 0.35), rgba(13, 214, 232, 0.08), transparent)"
+                        }}
+                    >
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                                initial={{ scale: 0.5, opacity: 0.8 }}
+                                animate={{ scale: 1.5, opacity: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <Forward10Icon />
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ─── Disney+ Style Pause Indicator ─── */}
+            <AnimatePresence>
+                {showPauseIndicator && !isLoading && !isAdPlaying && (
+                    <motion.div
+                        key="pause-indicator"
+                        initial={{ scale: 0.6, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 1.2, opacity: 0 }}
+                        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none z-[102]"
+                    >
+                        {/* Outer glow ring */}
+                        <motion.div
+                            className="absolute w-28 h-28 rounded-full"
+                            style={{
+                                background: "radial-gradient(circle, rgba(13, 214, 232, 0.15) 0%, transparent 70%)",
+                            }}
+                            animate={{
+                                scale: [1, 1.3, 1],
+                                opacity: [0.5, 0.2, 0.5],
+                            }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                        {/* Glass button */}
+                        <div
+                            className="w-20 h-20 rounded-full flex items-center justify-center cursor-pointer pointer-events-auto"
+                            style={{
+                                background: "rgba(255, 255, 255, 0.08)",
+                                backdropFilter: "blur(20px)",
+                                WebkitBackdropFilter: "blur(20px)",
+                                border: "1px solid rgba(255, 255, 255, 0.12)",
+                                boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1), 0 0 40px rgba(13, 214, 232, 0.1)"
+                            }}
+                            onClick={togglePlay}
+                        >
+                            <PlayIcon size={36} />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ─── Ad UI ─── */}
+            {isAdPlaying && (
+                <div className="absolute inset-0 z-[105] flex flex-col justify-end pointer-events-none">
+                    {/* Ad badge */}
+                    <div className="absolute top-6 left-6 pointer-events-none">
+                        <div
+                            className="px-4 py-1.5 rounded-md text-sm font-bold tracking-wide"
+                            style={{
+                                background: "rgba(234, 179, 8, 0.9)",
+                                color: "#000",
+                                backdropFilter: "blur(10px)",
+                            }}
+                        >
+                            Reklam • {formatTime(Math.max(0, adDuration - adCurrentTime))}
+                        </div>
+                    </div>
+
+                    {/* Ad progress bar */}
+                    <div className="w-full px-0 pb-0">
+                        <div className="w-full h-1 bg-white/10">
+                            <motion.div
+                                className="h-full"
+                                style={{
+                                    width: adDuration > 0 ? `${(adCurrentTime / adDuration) * 100}%` : '0%',
+                                    background: "linear-gradient(90deg, #eab308, #fbbf24)",
+                                }}
+                                transition={{ duration: 0.1 }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Controls Overlay ─── */}
+            <AnimatePresence>
+                {isControlsVisible && !isAdPlaying && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex flex-col justify-between p-6 sm:p-10 bg-gradient-to-b from-black/60 via-transparent to-black/80"
-                        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.8) 100%)" }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute inset-0 flex flex-col justify-between"
+                        style={{
+                            background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 75%, rgba(0,0,0,0.85) 100%)"
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Top Bar */}
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between p-6 sm:p-10">
                             <button
                                 onClick={closePlayer}
                                 className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all group"
                             >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white group-hover:scale-110 transition-transform">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                                </svg>
+                                <BackIcon />
                             </button>
-                            <div className="text-center">
-                                <h2 className="text-white/90 font-bold text-lg sm:text-2xl drop-shadow-md">{playerTitle}</h2>
+                            <div className="text-center flex-1 mx-4">
+                                <h2 className="text-white/90 font-bold text-lg sm:text-2xl drop-shadow-md truncate">{playerTitle}</h2>
                             </div>
-                            <div className="w-12" /> {/* Spacer */}
+                            <div className="w-12" />
                         </div>
 
-                        {/* Center Play Button (Large) */}
-                        {!playing && !isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <motion.div
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    className="w-20 h-20 rounded-full bg-cyan-500/20 backdrop-blur-sm flex items-center justify-center pointer-events-auto cursor-pointer hover:bg-cyan-500/40 transition-colors"
-                                    onClick={togglePlay}
-                                >
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-white ml-1">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </motion.div>
-                            </div>
-                        )}
+                        {/* Center Play/Pause (click area — but smaller, more subtle) */}
+                        <div className="flex-1" onClick={togglePlay} />
 
-                        {/* Bottom Bar */}
-                        <div className="flex flex-col gap-4">
+                        {/* Bottom Controls */}
+                        <div className="flex flex-col gap-3 px-6 sm:px-10 pb-6 sm:pb-10">
                             {/* Progress Bar */}
-                            <div className="group relative h-1.5 bg-white/20 rounded-full cursor-pointer hover:h-2.5 transition-all"
+                            <div
+                                className="group relative h-1 bg-white/20 rounded-full cursor-pointer hover:h-2 transition-all"
                                 onClick={(e) => {
                                     const rect = e.currentTarget.getBoundingClientRect();
                                     const pct = (e.clientX - rect.left) / rect.width;
                                     seekTo(pct * duration);
                                 }}
                             >
+                                {/* Buffered / filled */}
                                 <div
-                                    className="absolute top-0 left-0 h-full bg-cyan-400 rounded-full relative"
-                                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                                    className="absolute top-0 left-0 h-full bg-cyan-400 rounded-full"
+                                    style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
                                 >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg" />
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg ring-2 ring-cyan-400/50" />
                                 </div>
                             </div>
 
                             {/* Controls Row */}
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4 sm:gap-6">
-                                    <button onClick={togglePlay} className="text-white hover:text-cyan-400 transition-colors">
-                                        {playing ? (
-                                            <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                                        ) : (
-                                            <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                                        )}
+                                <div className="flex items-center gap-3 sm:gap-5">
+                                    {/* Play/Pause */}
+                                    <button onClick={togglePlay} className="text-white hover:text-cyan-400 transition-colors p-1">
+                                        {playing ? <PauseIcon size={28} /> : <PlayIcon size={28} />}
                                     </button>
 
-                                    {/* Seek Buttons */}
-                                    <button onClick={() => seek(-10)} className="text-white/80 hover:text-white transition-colors flex flex-col items-center gap-0.5 group">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V9a6 6 0 0112 0v3" /></svg>
-                                        <span className="text-[10px] font-bold">-10s</span>
+                                    {/* Seek Backward */}
+                                    <button
+                                        onClick={() => seekWithFlash(-10)}
+                                        className="text-white/80 hover:text-white transition-all hover:scale-110 p-1"
+                                    >
+                                        <Replay10Icon />
                                     </button>
-                                    <button onClick={() => seek(10)} className="text-white/80 hover:text-white transition-colors flex flex-col items-center gap-0.5 group">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="group-hover:translate-x-0.5 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15l6 6m0 0l6-6m-6 6V9a6 6 0 00-12 0v3" /></svg>
-                                        <span className="text-[10px] font-bold">+10s</span>
+
+                                    {/* Seek Forward */}
+                                    <button
+                                        onClick={() => seekWithFlash(10)}
+                                        className="text-white/80 hover:text-white transition-all hover:scale-110 p-1"
+                                    >
+                                        <Forward10Icon />
                                     </button>
 
                                     {/* Volume */}
                                     <div className="flex items-center gap-2 group/vol">
-                                        <button onClick={toggleMute} className="text-white hover:text-cyan-400">
+                                        <button onClick={toggleMute} className="text-white hover:text-cyan-400 transition-colors p-1">
                                             {isMuted || volume === 0 ? (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 17.25l-5.25-5.25m0 0L6.75 6.75M12 12l2.25-2.25m-2.25 2.25l-2.25 2.25M3 3l18 18" /></svg>
+                                                <VolumeMutedIcon />
+                                            ) : volume < 0.5 ? (
+                                                <VolumeLowIcon />
                                             ) : (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
+                                                <VolumeHighIcon />
                                             )}
                                         </button>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="1"
-                                            step="0.05"
-                                            value={isMuted ? 0 : volume}
-                                            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                                            className="w-0 overflow-hidden group-hover/vol:w-20 transition-all accent-cyan-400 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
-                                        />
+                                        <div className="flex items-center gap-2 w-0 overflow-hidden group-hover/vol:w-28 transition-all duration-300">
+                                            <div className="relative w-24 h-6 flex items-center">
+                                                <div className="absolute w-full h-1 bg-white/15 rounded-full" />
+                                                <div
+                                                    className="absolute h-1 rounded-full"
+                                                    style={{
+                                                        width: `${volumePercent}%`,
+                                                        background: "linear-gradient(90deg, #0DD6E8, #04C7F4)"
+                                                    }}
+                                                />
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="1"
+                                                    step="0.02"
+                                                    value={isMuted ? 0 : volume}
+                                                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                                                    className="volume-slider absolute w-full h-6 opacity-0 cursor-pointer"
+                                                />
+                                                <div
+                                                    className="absolute w-3 h-3 bg-white rounded-full shadow-md pointer-events-none ring-2 ring-cyan-400/30"
+                                                    style={{ left: `calc(${volumePercent}% - 6px)` }}
+                                                />
+                                            </div>
+                                            <span className="text-[11px] font-medium text-white/50 min-w-[24px] tabular-nums">{volumePercent}</span>
+                                        </div>
                                     </div>
 
-                                    <div className="text-xs sm:text-sm font-medium text-white/70">
+                                    {/* Time */}
+                                    <div className="text-xs sm:text-sm font-medium text-white/60 tabular-nums">
                                         {formatTime(currentTime)} / {formatTime(duration)}
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    {/* Next Episode Button */}
+                                <div className="flex items-center gap-3">
+                                    {/* Next Episode */}
                                     {nextEpisodeId && (
                                         <button
                                             onClick={handleNextEpisode}
                                             className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all text-sm font-bold border border-white/10"
                                         >
                                             Next Episode
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                            </svg>
+                                            <NextIcon />
                                         </button>
                                     )}
 
-                                    {/* Settings Toggle */}
+                                    {/* Settings */}
                                     <div className="relative">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
-                                            className={`p-2 rounded-full transition-colors ${showSettings ? 'text-cyan-400 bg-white/10' : 'text-white hover:text-cyan-400'}`}
+                                            className={`p-2 rounded-full transition-all ${showSettings ? 'text-cyan-400 bg-white/10 rotate-45' : 'text-white hover:text-cyan-400 rotate-0'}`}
+                                            style={{ transition: 'all 0.3s ease' }}
                                         >
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.43.816 1.035.816 1.73 0 .695-.32 1.3-.816 1.73m0-3.46a24.347 24.347 0 010 3.46" />
-                                            </svg>
+                                            <SettingsIcon />
                                         </button>
 
                                         {/* Settings Menu */}
@@ -476,28 +898,20 @@ export default function VideoPlayer() {
                                                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    transition={{ duration: 0.15 }}
                                                     className="absolute bottom-12 right-0 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50 text-sm"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <div className="flex border-b border-white/10">
-                                                        <button
-                                                            onClick={() => setActiveTab("quality")}
-                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "quality" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
-                                                        >
-                                                            Quality
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setActiveTab("audio")}
-                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "audio" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
-                                                        >
-                                                            Audio
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setActiveTab("subtitles")}
-                                                            className={`flex-1 py-3 font-semibold transition-colors ${activeTab === "subtitles" ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
-                                                        >
-                                                            Subs
-                                                        </button>
+                                                        {(["quality", "audio", "subtitles"] as const).map(tab => (
+                                                            <button
+                                                                key={tab}
+                                                                onClick={() => setActiveTab(tab)}
+                                                                className={`flex-1 py-3 font-semibold transition-colors ${activeTab === tab ? "text-cyan-400 bg-white/5" : "text-white/60 hover:text-white"}`}
+                                                            >
+                                                                {tab === "quality" ? "Quality" : tab === "audio" ? "Audio" : "Subs"}
+                                                            </button>
+                                                        ))}
                                                     </div>
 
                                                     <div className="max-h-60 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/20">
@@ -568,17 +982,9 @@ export default function VideoPlayer() {
                                         </AnimatePresence>
                                     </div>
 
-                                    {/* Fullscreen Toggle (Simple implementation) */}
-                                    <button onClick={() => {
-                                        if (!document.fullscreenElement) {
-                                            containerRef.current?.requestFullscreen();
-                                        } else {
-                                            document.exitFullscreen();
-                                        }
-                                    }} className="text-white hover:text-cyan-400 transition-colors">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                                        </svg>
+                                    {/* Fullscreen */}
+                                    <button onClick={toggleFullscreen} className="text-white hover:text-cyan-400 transition-colors p-1">
+                                        {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
                                     </button>
                                 </div>
                             </div>
@@ -589,9 +995,3 @@ export default function VideoPlayer() {
         </motion.div>
     );
 }
-
-const CheckIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-    </svg>
-);
