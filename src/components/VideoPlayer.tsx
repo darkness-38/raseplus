@@ -6,36 +6,35 @@ import { useStore } from "@/store/useStore";
 import { jellyfin } from "@/lib/jellyfin";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ─── Sample Ad URLs (replace with real ad URLs) ───
-const AD_VIDEOS = [
-    "https://storage.googleapis.com/gvabox/media/samples/ElephantsDream.mp4",
-    "https://storage.googleapis.com/gvabox/media/samples/BigBuckBunny.mp4",
-    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerBlazes.mp4",
-    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerEscapes.mp4",
-    "https://storage.googleapis.com/gvabox/media/samples/ForBiggerFun.mp4",
-];
-
-function getAdSchedule(durationSeconds: number): number[] {
-    // Returns array of cue times (in seconds) for mid-roll ads
-    const durationMinutes = durationSeconds / 60;
-    let midRollCount = 0;
-    if (durationMinutes >= 120) midRollCount = 4;
-    else if (durationMinutes >= 90) midRollCount = 3;
-    else if (durationMinutes >= 60) midRollCount = 2;
-    else if (durationMinutes >= 20) midRollCount = 1;
-
-    const cuePoints: number[] = [];
-    if (midRollCount > 0) {
-        const interval = durationSeconds / (midRollCount + 1);
-        for (let i = 1; i <= midRollCount; i++) {
-            cuePoints.push(Math.floor(interval * i));
+async function fetchVastAdUrl(): Promise<string | null> {
+    try {
+        const response = await fetch("/api/vast");
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        const mediaFiles = xmlDoc.getElementsByTagName("MediaFile");
+        for (let i = 0; i < mediaFiles.length; i++) {
+            const type = mediaFiles[i].getAttribute("type");
+            if (type === "video/mp4") {
+                return mediaFiles[i].textContent?.trim() || null;
+            }
         }
+        // Fallback or empty
+        return null;
+    } catch (e) {
+        console.error("Error fetching VAST ad:", e);
+        return null;
     }
-    return cuePoints;
 }
 
-function pickRandomAd(): string {
-    return AD_VIDEOS[Math.floor(Math.random() * AD_VIDEOS.length)];
+function getAdSchedule(durationSeconds: number): number[] {
+    // Returns 3 sections as requested: 25%, 50%, 75%
+    if (durationSeconds <= 0) return [];
+    return [
+        Math.floor(durationSeconds * 0.25),
+        Math.floor(durationSeconds * 0.50),
+        Math.floor(durationSeconds * 0.75)
+    ];
 }
 
 // ─── Icons ───
@@ -267,9 +266,9 @@ export default function VideoPlayer() {
                     if (!preRollDone && !adStartedRef.current) {
                         // Start pre-roll ad
                         adStartedRef.current = true;
-                        startAd();
+                        startAd().catch(e => console.error("Initial ad failed:", e));
                     } else {
-                        videoRef.current?.play().catch(e => console.error("Play failed:", e));
+                        setPlaying(true);
                     }
 
                     const levels = hls.levels.map((l, i) => ({
@@ -304,7 +303,7 @@ export default function VideoPlayer() {
                         adStartedRef.current = true;
                         startAd();
                     } else {
-                        videoRef.current?.play();
+                        setPlaying(true);
                     }
                 });
             }
@@ -383,10 +382,7 @@ export default function VideoPlayer() {
             }
             if (e.key === " ") {
                 e.preventDefault();
-                if (videoRef.current) {
-                    if (videoRef.current.paused) videoRef.current.play();
-                    else videoRef.current.pause();
-                }
+                togglePlay();
             }
             if (e.key === "f" || e.key === "F") {
                 e.preventDefault();
@@ -413,6 +409,24 @@ export default function VideoPlayer() {
             if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
         };
     }, [playing, showSettings, isAdPlaying, showControls, triggerSkipFlash, closePlayer]);
+
+    // ─── Sync main video play/pause with state ───
+    useEffect(() => {
+        if (!videoRef.current || isAdPlaying) return;
+
+        if (playing) {
+            if (videoRef.current.paused) {
+                videoRef.current.play().catch(e => {
+                    if (e.name !== "AbortError") console.error("Sync play failed:", e);
+                    setPlaying(false);
+                });
+            }
+        } else {
+            if (!videoRef.current.paused) {
+                videoRef.current.pause();
+            }
+        }
+    }, [playing, isAdPlaying]);
 
     // ─── Video Events ───
     const handleTimeUpdate = () => {
@@ -453,7 +467,19 @@ export default function VideoPlayer() {
     };
 
     // ─── Ad System ───
-    const startAd = useCallback(() => {
+    const startAd = useCallback(async () => {
+        setIsLoading(true); // Show loading while fetching VAST
+        const adUrl = await fetchVastAdUrl();
+        setIsLoading(false);
+
+        if (!adUrl) {
+            console.log("No VAST ad available, skipping.");
+            // If no ad, ensure main video starts
+            if (!preRollDone) setPreRollDone(true);
+            setPlaying(true);
+            return;
+        }
+
         setIsAdPlaying(true);
         setAdCurrentTime(0);
         setAdDuration(0);
@@ -466,13 +492,15 @@ export default function VideoPlayer() {
         }
 
         // Load ad video
-        const adUrl = pickRandomAd();
         if (adVideoRef.current) {
             adVideoRef.current.src = adUrl;
             adVideoRef.current.load();
-            adVideoRef.current.play().catch(e => console.error("Ad play failed:", e));
+            adVideoRef.current.play().catch(e => {
+                console.error("Ad play failed:", e);
+                handleAdEnded(); // Skip the ad if it fails
+            });
         }
-    }, []);
+    }, [preRollDone]);
 
     const handleAdTimeUpdate = () => {
         if (adVideoRef.current) {
@@ -491,14 +519,14 @@ export default function VideoPlayer() {
             // Start main video from beginning
             if (videoRef.current) {
                 videoRef.current.currentTime = 0;
-                videoRef.current.play().catch(e => console.error("Play failed after pre-roll:", e));
             }
+            setPlaying(true);
         } else {
             // Resume from saved position (mid-roll)
             if (videoRef.current) {
                 videoRef.current.currentTime = savedVideoTime;
-                videoRef.current.play().catch(e => console.error("Play failed after mid-roll:", e));
             }
+            setPlaying(true);
         }
 
         showControls();
@@ -508,14 +536,21 @@ export default function VideoPlayer() {
     const togglePlay = useCallback(() => {
         if (isAdPlaying) return;
         if (videoRef.current?.paused) {
-            videoRef.current.play();
+            // User requested: "when clicked play or resume, ad wil play"
+            // We trigger an ad on every resume/play if pre-roll is done.
+            // (Pre-roll is handled by the initial load useEffect)
+            if (preRollDone) {
+                startAd().catch(e => console.error("Resume ad failed:", e));
+            } else {
+                setPlaying(true);
+            }
         } else {
-            videoRef.current?.pause();
+            setPlaying(false);
             if (videoRef.current && playerItemId && mediaSourceId) {
                 jellyfin.onPlaybackProgress(playerItemId, mediaSourceId, videoRef.current.currentTime * 10000000);
             }
         }
-    }, [isAdPlaying, playerItemId, mediaSourceId]);
+    }, [isAdPlaying, playerItemId, mediaSourceId, preRollDone, startAd]);
 
     const seekWithFlash = useCallback((seconds: number) => {
         if (isAdPlaying) return;
@@ -720,27 +755,38 @@ export default function VideoPlayer() {
             {isAdPlaying && (
                 <div className="absolute inset-0 z-[105] flex flex-col justify-end pointer-events-none">
                     {/* Ad badge */}
-                    <div className="absolute top-6 left-6 pointer-events-none">
+                    <div className="absolute top-8 left-8 pointer-events-none group">
                         <div
-                            className="px-4 py-1.5 rounded-md text-sm font-bold tracking-wide"
+                            className="px-5 py-2 rounded-xl text-xs font-black tracking-[0.15em] flex items-center gap-3 transition-all duration-500"
                             style={{
-                                background: "rgba(234, 179, 8, 0.9)",
-                                color: "#000",
-                                backdropFilter: "blur(10px)",
+                                background: "rgba(13, 214, 232, 0.12)",
+                                backdropFilter: "blur(24px) saturate(180%)",
+                                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                                border: "1px solid rgba(255, 255, 255, 0.15)",
+                                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
+                                color: "#fff",
+                                textShadow: "0 0 20px rgba(13, 214, 232, 0.5)"
                             }}
                         >
-                            Reklam • {formatTime(Math.max(0, adDuration - adCurrentTime))}
+                            <span className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(13,214,232,0.8)]" />
+                                AD
+                            </span>
+                            <span className="w-px h-3 bg-white/20" />
+                            <span className="font-mono text-[13px] opacity-90 tabular-nums">
+                                {formatTime(Math.max(0, adDuration - adCurrentTime))}
+                            </span>
                         </div>
                     </div>
 
                     {/* Ad progress bar */}
                     <div className="w-full px-0 pb-0">
-                        <div className="w-full h-1 bg-white/10">
+                        <div className="w-full h-1.5 bg-white/5 backdrop-blur-md">
                             <motion.div
-                                className="h-full"
+                                className="h-full shadow-[0_0_15px_rgba(13,214,232,0.6)]"
                                 style={{
                                     width: adDuration > 0 ? `${(adCurrentTime / adDuration) * 100}%` : '0%',
-                                    background: "linear-gradient(90deg, #eab308, #fbbf24)",
+                                    background: "linear-gradient(90deg, #0DD6E8, #04C7F4, #00B4D8)",
                                 }}
                                 transition={{ duration: 0.1 }}
                             />
