@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useStore } from "@/store/useStore";
+import { tmdb } from "@/lib/tmdb";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BackIcon = () => (
@@ -16,7 +17,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed" | "atom";
+type SourceType = "superembed" | "autoembed" | "2embed" | "vidmoly" | "rapidrame";
 
 export default function VideoPlayer() {
     const { 
@@ -31,13 +32,42 @@ export default function VideoPlayer() {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [activeSource, setActiveSource] = useState<SourceType>("superembed");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [isCam, setIsCam] = useState(false);
+
+    useEffect(() => {
+        const checkCamStatus = async () => {
+            if (playerType === "movie" && playerTmdbId) {
+                try {
+                    const details = await tmdb.getDetails(playerTmdbId, "movie");
+                    if (details?.status === "Released" && details?.release_date) {
+                        const releaseDate = new Date(details.release_date);
+                        const today = new Date();
+                        const diffTime = Math.abs(today.getTime() - releaseDate.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        // If it came out in the last 60 days, it's highly likely a CAM.
+                        if (diffDays <= 60) {
+                            setIsCam(true);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch details for CAM check", e);
+                }
+            }
+        };
+        checkCamStatus();
+    }, [playerTmdbId, playerType]);
 
     const getEmbedUrl = () => {
         switch (activeSource) {
-            case "atom":
+            case "vidmoly":
                 return playerType === "movie"
-                    ? `https://atom.live/embed/movie/${playerTmdbId}`
-                    : `https://atom.live/embed/tv/${playerTmdbId}?s=${playerSeason}&e=${playerEpisode}`;
+                    ? `https://vidmoly.to/embed/${playerTmdbId}`
+                    : `https://vidmoly.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
+            case "rapidrame":
+                return playerType === "movie"
+                    ? `https://www.2embed.cc/embedTR/${playerTmdbId}`
+                    : `https://www.2embed.cc/embedtvTR/${playerTmdbId}&s=${playerSeason}&e=${playerEpisode}`;
 
             case "superembed":
                 return playerType === "movie"
@@ -156,11 +186,18 @@ export default function VideoPlayer() {
                                     Source 3 (Fallback)
                                 </button>
                                 <button 
-                                    onClick={() => setActiveSource("atom")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "atom" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                    onClick={() => setActiveSource("vidmoly")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "vidmoly" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
-                                    Source 4 (Atom)
+                                    Source 4 {isCam && "(CAM Sürüm)"}
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("rapidrame")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "rapidrame" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Source 5 {isCam && "(CAM Sürüm)"}
                                 </button>
 
                             </div>
