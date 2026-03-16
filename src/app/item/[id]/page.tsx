@@ -10,10 +10,13 @@ import { useRouter } from "next/navigation";
 
 interface PageProps {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default function ItemDetailPage({ params }: PageProps) {
+export default function ItemDetailPage({ params, searchParams }: PageProps) {
     const { id } = use(params);
+    const resolvedParams = use(searchParams);
+    const urlType = resolvedParams?.type as string | undefined;
     const router = useRouter();
 
     const { openPlayer } = useStore();
@@ -30,15 +33,27 @@ export default function ItemDetailPage({ params }: PageProps) {
         const fetchItem = async () => {
             setLoading(true);
             try {
-                // Try movie first
-                let data = await tmdb.getDetails(id, "movie");
-                let type: "movie" | "tv" = "movie";
-                
-                if (!data.title && !data.name) {
+                let data;
+                let type: "movie" | "tv";
+
+                // Use the type from the URL query to avoid TMDB ID collisions
+                if (urlType === "tv" || urlType === "anime") {
                     data = await tmdb.getDetails(id, "tv");
                     type = "tv";
-                } else if (data.name && !data.title) {
-                    type = "tv";
+                } else if (urlType === "movie") {
+                    data = await tmdb.getDetails(id, "movie");
+                    type = "movie";
+                } else {
+                    // Fallback just in case
+                    data = await tmdb.getDetails(id, "movie");
+                    type = "movie";
+                    
+                    if (!data.title && !data.name) {
+                        data = await tmdb.getDetails(id, "tv");
+                        type = "tv";
+                    } else if (data.name && !data.title) {
+                        type = "tv";
+                    }
                 }
 
                 const mapped = tmdb.mapToMediaItem({ ...data, media_type: type });

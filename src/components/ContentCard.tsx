@@ -27,7 +27,7 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.04 }}
-            onClick={() => router.push(`/item/${item.id}?source=${item.source}`)}
+            onClick={() => router.push(`/item/${item.id}?source=${item.source}&type=${item.type}`)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={`group relative flex-shrink-0 cursor-pointer snap-start transition-all duration-300 ${isHorizontal
