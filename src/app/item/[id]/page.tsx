@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { MediaItem } from "@/types/media";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -19,7 +20,7 @@ export default function ItemDetailPage({ params, searchParams }: PageProps) {
     const urlType = resolvedParams?.type as string | undefined;
     const router = useRouter();
 
-    const { openPlayer } = useStore();
+    const { openPlayer, isPlayerOpen } = useStore();
 
     const [item, setItem] = useState<MediaItem | null>(null);
     const [seasons, setSeasons] = useState<any[]>([]);
@@ -170,16 +171,24 @@ export default function ItemDetailPage({ params, searchParams }: PageProps) {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 sm:mb-8">
-                        <button
-                            onClick={handlePlay}
-                            className="px-8 py-4 bg-[#0DD6E8] text-black rounded-xl flex items-center justify-center gap-3 text-lg font-black hover:bg-cyan-400 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20"
-                        >
-                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
-                            ŞİMDİ İZLE
-                        </button>
+                        {!isPlayerOpen && (
+                            <button
+                                onClick={handlePlay}
+                                className="px-8 py-4 bg-[#0DD6E8] text-black rounded-xl flex items-center justify-center gap-3 text-lg font-black hover:bg-cyan-400 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20"
+                            >
+                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                                ŞİMDİ İZLE
+                            </button>
+                        )}
                     </div>
+
+                    {isPlayerOpen && (
+                        <div className="mb-10 sm:mb-12">
+                            <VideoPlayer />
+                        </div>
+                    )}
 
                     <p className="text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl mb-8 sm:mb-10 font-body text-white/60">
                         {item.overview}
