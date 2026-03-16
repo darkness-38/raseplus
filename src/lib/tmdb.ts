@@ -5,6 +5,47 @@ const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || "";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
 
+const MOVIE_GENRES: { [key: number]: string } = {
+    28: "Action",
+    12: "Adventure",
+    16: "Animation",
+    35: "Comedy",
+    80: "Crime",
+    99: "Documentary",
+    18: "Drama",
+    10751: "Family",
+    14: "Fantasy",
+    36: "History",
+    27: "Horror",
+    10402: "Music",
+    9648: "Mystery",
+    10749: "Romance",
+    878: "Science Fiction",
+    10770: "TV Movie",
+    53: "Thriller",
+    10752: "War",
+    37: "Western",
+};
+
+const TV_GENRES: { [key: number]: string } = {
+    10759: "Action & Adventure",
+    16: "Animation",
+    35: "Comedy",
+    80: "Crime",
+    99: "Documentary",
+    18: "Drama",
+    10751: "Family",
+    10762: "Kids",
+    9648: "Mystery",
+    10763: "News",
+    10764: "Reality",
+    10765: "Sci-Fi & Fantasy",
+    10766: "Soap",
+    10767: "Talk",
+    10768: "War & Politics",
+    37: "Western",
+};
+
 export interface TMDBMovie {
     id: number;
     title?: string;
@@ -52,17 +93,20 @@ class TMDBService {
     }
 
     public mapToMediaItem(item: TMDBMovie): MediaItem {
+        const isTV = item.media_type === "tv";
+        const genreMap = isTV ? TV_GENRES : MOVIE_GENRES;
+
         return {
             id: String(item.id),
-            tmdbId: String(item.id),
             title: item.title || item.name || "Unknown",
             overview: item.overview || "",
-            posterPath: this.getImageUrl(item.poster_path),
+            posterPath: this.getImageUrl(item.poster_path, "original"),
             backdropPath: this.getImageUrl(item.backdrop_path, "original"),
             rating: item.vote_average || 0,
             year: (item.release_date || item.first_air_date || "").split("-")[0] || "Unknown",
             type: (item.media_type === "tv" ? "tv" : "movie") as MediaType,
             source: "tmdb",
+            genres: item.genre_ids?.map(id => genreMap[id]).filter(Boolean) as string[] || [],
         };
     }
 

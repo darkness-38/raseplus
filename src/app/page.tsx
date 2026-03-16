@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { useSiteConfig } from "@/lib/siteConfig";
+import { tmdb } from "@/lib/tmdb";
 
 /* ─────────────────── DESIGN TOKENS ─────────────────── */
 const COLORS = {
@@ -114,27 +115,7 @@ const faqs = [
   },
 ];
 
-const moviePosters = [
-  "https://framerusercontent.com/images/01F0ojHYY7yfP5mEQcBEtXImI4U.png",
-  "https://framerusercontent.com/images/XL2iMXlJvKBp6aGjnFkXIYvRjAQ.png",
-  "https://framerusercontent.com/images/VXG3dTY369P2sO1iNdHFH1C4BU.png",
-  "https://framerusercontent.com/images/q7U8kpwb5lplE0XtfCRwNVCVkA.png",
-  "https://framerusercontent.com/images/XL2iMXlJvKBp6aGjnFkXIYvRjAQ.png",
-  "https://framerusercontent.com/images/01F0ojHYY7yfP5mEQcBEtXImI4U.png",
-  "https://framerusercontent.com/images/VXG3dTY369P2sO1iNdHFH1C4BU.png",
-  "https://framerusercontent.com/images/q7U8kpwb5lplE0XtfCRwNVCVkA.png",
-];
-
-const moviePostersRow2 = [
-  "https://framerusercontent.com/images/VXG3dTY369P2sO1iNdHFH1C4BU.png",
-  "https://framerusercontent.com/images/q7U8kpwb5lplE0XtfCRwNVCVkA.png",
-  "https://framerusercontent.com/images/01F0ojHYY7yfP5mEQcBEtXImI4U.png",
-  "https://framerusercontent.com/images/XL2iMXlJvKBp6aGjnFkXIYvRjAQ.png",
-  "https://framerusercontent.com/images/q7U8kpwb5lplE0XtfCRwNVCVkA.png",
-  "https://framerusercontent.com/images/VXG3dTY369P2sO1iNdHFH1C4BU.png",
-  "https://framerusercontent.com/images/01F0ojHYY7yfP5mEQcBEtXImI4U.png",
-  "https://framerusercontent.com/images/XL2iMXlJvKBp6aGjnFkXIYvRjAQ.png",
-];
+// Poster arrays are now populated dynamically from TMDB in LandingPage component
 
 /* ─────────────────── SMALL COMPONENTS ─────────────────── */
 const CheckIcon = () => (
@@ -177,12 +158,39 @@ export default function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [moviePosters, setMoviePosters] = useState<string[]>([]);
+  const [moviePostersRow2, setMoviePostersRow2] = useState<string[]>([]);
   const { config: cfg } = useSiteConfig();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  // Fetch TMDB posters for the marquee section
+  useEffect(() => {
+    const fetchPosters = async () => {
+      try {
+        const [movies, anime] = await Promise.all([
+          tmdb.getMovies("popular"),
+          tmdb.getAnime(),
+        ]);
+        const movieUrls = movies
+          .filter((m) => m.posterPath)
+          .slice(0, 10)
+          .map((m) => m.posterPath);
+        const animeUrls = anime
+          .filter((a) => a.posterPath)
+          .slice(0, 10)
+          .map((a) => a.posterPath);
+        setMoviePosters(movieUrls);
+        setMoviePostersRow2(animeUrls);
+      } catch {
+        // silently ignore — marquee just stays empty
+      }
+    };
+    fetchPosters();
   }, []);
 
   const ctaStyle: React.CSSProperties = {
@@ -698,13 +706,13 @@ export default function LandingPage() {
               transformOrigin: "center bottom",
             }}
           >
-            {/* Row 1 */}
+            {/* Row 1 — Popular Movies */}
             <div className="mb-4">
-              <PosterMarquee posters={moviePosters} direction="left" speed={40} />
+              {moviePosters.length > 0 && <PosterMarquee posters={moviePosters} direction="left" speed={40} />}
             </div>
-            {/* Row 2 */}
+            {/* Row 2 — Popular Anime */}
             <div>
-              <PosterMarquee posters={moviePostersRow2} direction="right" speed={45} />
+              {moviePostersRow2.length > 0 && <PosterMarquee posters={moviePostersRow2} direction="right" speed={45} />}
             </div>
           </div>
         </div>

@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { jellyfin } from "@/lib/jellyfin";
 import { useState } from "react";
 import Image from "next/image";
 import { MediaItem } from "@/types/media";

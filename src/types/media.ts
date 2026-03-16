@@ -2,8 +2,7 @@
 export type MediaType = "movie" | "tv" | "anime" | "collection";
 
 export interface MediaItem {
-    id: string; // This can be Jellyfin ID or TMDB ID
-    tmdbId?: string;
+    id: string; // TMDB ID
     title: string;
     overview: string;
     posterPath: string;
@@ -11,7 +10,7 @@ export interface MediaItem {
     rating: number;
     year: string;
     type: MediaType;
-    source: "jellyfin" | "tmdb";
+    source: "tmdb";
     genres?: string[];
 }
 
