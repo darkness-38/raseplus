@@ -16,7 +16,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed";
+type SourceType = "vidmoly" | "superembed" | "autoembed" | "2embed";
 
 export default function VideoPlayer() {
     const { 
@@ -29,11 +29,15 @@ export default function VideoPlayer() {
     } = useStore();
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
-    const [activeSource, setActiveSource] = useState<SourceType>("superembed");
+    const [activeSource, setActiveSource] = useState<SourceType>("vidmoly");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const getEmbedUrl = () => {
         switch (activeSource) {
+            case "vidmoly":
+                return playerType === "movie"
+                    ? `https://vidsrc.pro/embed/movie/${playerTmdbId}?adapter=vidmoly`
+                    : `https://vidsrc.pro/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}?adapter=vidmoly`;
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
@@ -83,7 +87,7 @@ export default function VideoPlayer() {
                     src={embedUrl}
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
-                    allow="autoplay; fullscreen"
+                    allow="autoplay; fullscreen; picture-in-picture"
                     referrerPolicy="origin"
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
                     loading="lazy"
@@ -149,6 +153,13 @@ export default function VideoPlayer() {
                                 >
                                     <SourceIcon />
                                     Source 3 (Fallback)
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("vidmoly")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "vidmoly" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Source 4 (Vidmoly)
                                 </button>
                             </div>
 
