@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import VideoPlayer from "@/components/VideoPlayer";
 import { useStore } from "@/store/useStore";
@@ -18,13 +18,20 @@ export default function ItemLayout({
     const isPlayerOpen = useStore((s) => s.isPlayerOpen);
     const activeProfile = useStore((s) => s.activeProfile);
 
+    const [isClient, setIsClient] = useState(false);
+    
     useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isClient) return;
         if (!loading && !user) {
             router.push("/login");
         } else if (!loading && user && !activeProfile) {
             router.push("/profiles");
         }
-    }, [user, loading, router, activeProfile]);
+    }, [user, loading, router, activeProfile, isClient]);
 
     if (loading || !user) {
         return (
