@@ -53,10 +53,10 @@ export default function AnimePage() {
                 className="px-4 sm:px-6 lg:px-12 mb-8 sm:mb-10"
             >
                 <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 font-heading uppercase tracking-tighter">
-                    ANİME
+                    ANIME
                 </h1>
                 <p className="text-sm sm:text-base text-white/40 max-w-2xl">
-                    En yeni Japon animasyonlarını keşfet. Aksiyon, macera, dram ve daha fazlası en yüksek kalitede burada.
+                    Discover the latest Japanese animations. Action, adventure, drama, and more are here in the highest quality.
                 </p>
             </motion.div>
 

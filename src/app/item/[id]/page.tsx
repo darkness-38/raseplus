@@ -177,7 +177,7 @@ export default function ItemDetailPage({ params, searchParams }: PageProps) {
                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z" />
                             </svg>
-                            ŞİMDİ İZLE
+                            WATCH NOW
                         </button>
                     </div>
 
@@ -230,7 +230,7 @@ export default function ItemDetailPage({ params, searchParams }: PageProps) {
 
                     {similar.length > 0 && (
                         <div>
-                            <h3 className="text-xl font-black text-white mb-6 font-heading uppercase tracking-wider">Benzer İçerikler</h3>
+                            <h3 className="text-xl font-black text-white mb-6 font-heading uppercase tracking-wider">Similar Content</h3>
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                 {similar.slice(0, 6).map((sim) => (
                                     <div
