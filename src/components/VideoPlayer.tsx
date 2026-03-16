@@ -17,7 +17,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed";
+type SourceType = "superembed" | "autoembed" | "2embed" | "hizli" | "mace";
 
 export default function VideoPlayer() {
     const { 
@@ -63,6 +63,10 @@ export default function VideoPlayer() {
 
     const getEmbedUrl = () => {
         switch (activeSource) {
+            case "hizli":
+                return `https://hizli-oynatici.com/v/${imdbId || playerTmdbId}`;
+            case "mace":
+                return `https://maceplayer.xyz/e/${imdbId || playerTmdbId}`;
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
@@ -178,6 +182,20 @@ export default function VideoPlayer() {
                                 >
                                     <SourceIcon />
                                     Source 3 (Fallback)
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("hizli")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "hizli" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Source 4 (Hızlı) {isCam && playerType === "movie" && "(CAM Sürüm)"}
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("mace")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "mace" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Source 5 (Mace) {isCam && playerType === "movie" && "(CAM Sürüm)"}
                                 </button>
                             </div>
 
