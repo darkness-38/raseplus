@@ -26,8 +26,9 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
     const scroll = (direction: "left" | "right") => {
         if (!scrollRef.current) return;
         const amount = scrollRef.current.clientWidth * 0.75;
-        scrollRef.current.scrollBy({
-            left: direction === "left" ? -amount : amount,
+        const targetPosition = scrollRef.current.scrollLeft + (direction === "left" ? -amount : amount);
+        scrollRef.current.scrollTo({
+            left: targetPosition,
             behavior: "smooth",
         });
     };
@@ -64,7 +65,7 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
                         style={{ background: "linear-gradient(to right, #00061a 20%, transparent)" }}
                     >
                         <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"
+                            className="pointer-events-none w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"
                             style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
                         >
                             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -97,7 +98,7 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
                         style={{ background: "linear-gradient(to left, #00061a 20%, transparent)" }}
                     >
                         <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"
+                            className="pointer-events-none w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"
                             style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
                         >
                             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -72,9 +72,9 @@ export default function BrowsePage() {
         <div className="min-h-screen">
             <HeroBanner items={heroItems} />
             <div className="relative z-10 -mt-20 space-y-10 pb-20">
-                <ContentRow title="Günün Trendleri" items={trendingDaily} variant="horizontal" />
-                <ContentRow title="Haftanın En Çok İzlenenleri" items={trendingWeekly} variant="vertical" />
-                <ContentRow title="🎌 Popüler Animeler" items={animeItems} variant="horizontal" />
+                <ContentRow title="Trending Today" items={trendingDaily} variant="horizontal" />
+                <ContentRow title="Top Watched This Week" items={trendingWeekly} variant="vertical" />
+                <ContentRow title="🎌 Popular Anime" items={animeItems} variant="horizontal" />
             </div>
         </div>
     );

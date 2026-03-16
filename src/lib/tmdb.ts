@@ -76,8 +76,8 @@ class TMDBService {
     private async fetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
         const queryParams = new URLSearchParams({
             api_key: this.apiKey,
-            language: "tr-TR",
-            region: "TR",
+            language: "en-US",
+            region: "US",
             ...params,
         });
 

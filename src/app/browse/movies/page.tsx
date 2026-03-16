@@ -58,7 +58,7 @@ export default function MoviesPage() {
                     FİLMLER
                 </h1>
                 <p className="text-sm sm:text-base text-white/40 max-w-2xl">
-                    Dünyanın en popüler ve en yeni filmlerini keşfet. Yerel ve küresel kaynaklardan en iyi kalitede izle.
+                    Discover the world's most popular and newest movies. Watch in the best quality from local and global sources.
                 </p>
             </motion.div>
 
@@ -73,7 +73,7 @@ export default function MoviesPage() {
                     transition={{ delay: 0.2 }}
                     className="px-4 sm:px-6 lg:px-12"
                 >
-                    <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Popüler Filmler</h2>
+                    <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Popular Movies</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                         {popular.map((item, i) => (
                             <ContentCard key={item.id} item={item} index={i} variant="horizontal" />

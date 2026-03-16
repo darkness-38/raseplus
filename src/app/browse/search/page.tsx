@@ -174,7 +174,7 @@ export default function SearchPage() {
                     <div className="space-y-10">
                         {suggestedMovies.length > 0 && (
                             <div>
-                                <h2 className="text-lg font-black text-white mb-4 uppercase tracking-widest">Popüler Filmler</h2>
+                                <h2 className="text-lg font-black text-white mb-4 uppercase tracking-widest">Popular Movies</h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                                     {suggestedMovies.slice(0, 8).map((item, i) => (
                                         <ContentCard key={item.id} item={item} index={i} variant="horizontal" />
@@ -185,7 +185,7 @@ export default function SearchPage() {
 
                         {suggestedTV.length > 0 && (
                             <div>
-                                <h2 className="text-lg font-black text-white mb-4 uppercase tracking-widest">Popüler Diziler</h2>
+                                <h2 className="text-lg font-black text-white mb-4 uppercase tracking-widest">Popular Series</h2>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                                     {suggestedTV.map((item, i) => (
                                         <ContentCard key={item.id} item={item} index={i} variant="vertical" />

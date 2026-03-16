@@ -60,7 +60,7 @@ export default function AnimePage() {
                 </p>
             </motion.div>
 
-            <ContentRow title="Trend Animeler" items={trending} variant="vertical" />
+            <ContentRow title="Trending Anime" items={trending} variant="vertical" />
             
             <motion.div
                 initial={{ opacity: 0 }}

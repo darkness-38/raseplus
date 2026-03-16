@@ -73,7 +73,7 @@ export default function SeriesPage() {
                     transition={{ delay: 0.2 }}
                     className="px-4 sm:px-6 lg:px-12"
                 >
-                    <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Popüler Diziler</h2>
+                    <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Popular Series</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                         {popular.map((item, i) => (
                             <ContentCard key={item.id} item={item} index={i} variant="horizontal" />
