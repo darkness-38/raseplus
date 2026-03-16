@@ -153,7 +153,7 @@ export default function VideoPlayer() {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // ─── 1. Hybrid Source Logic ───
-    const isGlobal = playerSource === "global";
+    const isGlobal = playerSource === "tmdb";
     const embedUrl = isGlobal 
         ? playerType === "movie"
             ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
@@ -620,7 +620,14 @@ export default function VideoPlayer() {
 
     const handleNextEpisode = () => {
         if (nextEpisodeId && nextEpisodeTitle) {
-            openPlayer(nextEpisodeId, nextEpisodeTitle);
+            openPlayer({
+                itemId: nextEpisodeId,
+                title: nextEpisodeTitle,
+                type: "tv",
+                source: playerSource, // Keep same source
+                season: playerSeason,
+                episode: playerEpisode + 1
+            });
         }
     };
 

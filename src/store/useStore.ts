@@ -88,7 +88,7 @@ export const useStore = create<AppState>((set) => ({
     playerTmdbId: null,
     playerTitle: "",
     playerType: "movie",
-    playerSource: "local",
+    playerSource: "jellyfin",
     playerSeason: 1,
     playerEpisode: 1,
 
@@ -99,7 +99,7 @@ export const useStore = create<AppState>((set) => ({
             playerTmdbId: opts.tmdbId || null,
             playerTitle: opts.title,
             playerType: opts.type,
-            playerSource: opts.source || "local",
+            playerSource: opts.source || "jellyfin",
             playerSeason: opts.season || 1,
             playerEpisode: opts.episode || 1,
         }),

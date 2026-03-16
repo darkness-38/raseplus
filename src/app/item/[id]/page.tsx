@@ -125,7 +125,7 @@ export default function ItemDetailPage({ params }: PageProps) {
             tmdbId: item.tmdbId || item.id,
             title: item.title,
             type: item.type as "movie" | "tv",
-            source: source === "jellyfin" ? "local" : "global",
+            source: source,
             season: item.type === "tv" ? selectedSeason : undefined,
             episode: item.type === "tv" ? 1 : undefined,
         });
@@ -138,7 +138,7 @@ export default function ItemDetailPage({ params }: PageProps) {
             tmdbId: item.tmdbId || item.id,
             title: `${item.title} - ${ep.name || ep.Name}`,
             type: "tv",
-            source: source === "jellyfin" ? "local" : "global",
+            source: source,
             season: selectedSeason,
             episode: ep.episode_number || ep.IndexNumber,
         });
