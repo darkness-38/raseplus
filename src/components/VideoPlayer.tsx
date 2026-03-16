@@ -36,8 +36,8 @@ export default function VideoPlayer() {
         switch (activeSource) {
             case "vidmoly":
                 return playerType === "movie"
-                    ? `https://vidsrc.pro/embed/movie/${playerTmdbId}?ds_lang=tr&adapter=vidmoly`
-                    : `https://vidsrc.pro/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}?ds_lang=tr&adapter=vidmoly`;
+                    ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
+                    : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
