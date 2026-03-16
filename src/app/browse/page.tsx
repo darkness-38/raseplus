@@ -14,29 +14,26 @@ export default function BrowsePage() {
     const isKids = activeProfile?.isKids ?? false;
 
     const [heroItems, setHeroItems] = useState<MediaItem[]>([]);
-    const [trendingAll, setTrendingAll] = useState<MediaItem[]>([]);
-    const [popularMovies, setPopularMovies] = useState<MediaItem[]>([]);
-    const [trendingTV, setTrendingTV] = useState<MediaItem[]>([]);
+    const [trendingDaily, setTrendingDaily] = useState<MediaItem[]>([]);
+    const [trendingWeekly, setTrendingWeekly] = useState<MediaItem[]>([]);
     const [animeItems, setAnimeItems] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                const [trending, movies, tv, anime] = await Promise.all([
-                    tmdb.getTrending("all"),
-                    tmdb.getMovies("popular"),
-                    tmdb.getTVShows("popular"),
+                const [daily, weekly, anime] = await Promise.all([
+                    tmdb.getTrending("all", "day"),
+                    tmdb.getTrending("all", "week"),
                     tmdb.getAnime(),
                 ]);
 
-                setTrendingAll(trending.slice(0, 20));
-                setPopularMovies(movies.slice(0, 20));
-                setTrendingTV(tv.slice(0, 20));
+                setTrendingDaily(daily.slice(0, 20));
+                setTrendingWeekly(weekly.slice(0, 20));
                 setAnimeItems(anime.slice(0, 20));
 
-                // Hero picks from trending
-                setHeroItems(trending.slice(0, 8));
+                // Hero picks from daily trending
+                setHeroItems(daily.slice(0, 8));
             } catch (e) {
                 console.error("Failed to fetch browse data:", e);
             } finally {
@@ -75,10 +72,9 @@ export default function BrowsePage() {
         <div className="min-h-screen">
             <HeroBanner items={heroItems} />
             <div className="relative z-10 -mt-20 space-y-10 pb-20">
-                <ContentRow title="Haftanın Trendleri" items={trendingAll} variant="vertical" />
-                <ContentRow title={cfg.browse.popularMoviesTitle} items={popularMovies} variant="horizontal" />
-                <ContentRow title="Popüler Diziler" items={trendingTV} variant="horizontal" />
-                <ContentRow title="🎌 Popüler Animeler" items={animeItems} variant="vertical" />
+                <ContentRow title="Günün Trendleri" items={trendingDaily} variant="horizontal" />
+                <ContentRow title="Haftanın En Çok İzlenenleri" items={trendingWeekly} variant="vertical" />
+                <ContentRow title="🎌 Popüler Animeler" items={animeItems} variant="horizontal" />
             </div>
         </div>
     );

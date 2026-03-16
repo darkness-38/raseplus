@@ -55,9 +55,13 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
                 {/* Left Arrow */}
                 {canScrollLeft && (
                     <button
-                        onClick={() => scroll("left")}
-                        className="absolute left-0 top-0 bottom-0 z-10 w-10 sm:w-12 opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center justify-center"
-                        style={{ background: "linear-gradient(to right, #00061a, transparent)" }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            scroll("left");
+                        }}
+                        className="absolute left-0 top-0 bottom-0 z-40 w-10 sm:w-14 opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-0"
+                        style={{ background: "linear-gradient(to right, #00061a 20%, transparent)" }}
                     >
                         <div
                             className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"
@@ -74,7 +78,7 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
                 <div
                     ref={scrollRef}
                     onScroll={checkScroll}
-                    className="flex gap-2.5 sm:gap-3 md:gap-4 overflow-x-auto hide-scrollbar px-4 sm:px-6 lg:px-12 pb-2 snap-x"
+                    className="flex gap-2.5 sm:gap-3 md:gap-4 overflow-x-auto hide-scrollbar px-4 sm:px-6 lg:px-12 pb-2 scroll-smooth"
                 >
                     {items.map((item, i) => (
                         <ContentCard key={`${item.id}-${i}`} item={item} index={i} variant={variant} />
@@ -84,9 +88,13 @@ export default function ContentRow({ title, items, variant = "vertical" }: Conte
                 {/* Right Arrow */}
                 {canScrollRight && (
                     <button
-                        onClick={() => scroll("right")}
-                        className="absolute right-0 top-0 bottom-0 z-10 w-10 sm:w-12 opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center justify-center"
-                        style={{ background: "linear-gradient(to left, #00061a, transparent)" }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            scroll("right");
+                        }}
+                        className="absolute right-0 top-0 bottom-0 z-40 w-10 sm:w-14 opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-0"
+                        style={{ background: "linear-gradient(to left, #00061a 20%, transparent)" }}
                     >
                         <div
                             className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-colors hover:bg-white/20"

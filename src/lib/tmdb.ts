@@ -1,4 +1,3 @@
-
 import { MediaItem, MediaType } from "@/types/media";
 
 const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || "";
@@ -34,6 +33,7 @@ const TV_GENRES: { [key: number]: string } = {
     80: "Crime",
     99: "Documentary",
     18: "Drama",
+    37: "Western",
     10751: "Family",
     10762: "Kids",
     9648: "Mystery",
@@ -43,7 +43,6 @@ const TV_GENRES: { [key: number]: string } = {
     10766: "Soap",
     10767: "Talk",
     10768: "War & Politics",
-    37: "Western",
 };
 
 export interface TMDBMovie {
@@ -78,6 +77,7 @@ class TMDBService {
         const queryParams = new URLSearchParams({
             api_key: this.apiKey,
             language: "tr-TR",
+            region: "TR",
             ...params,
         });
 
@@ -110,10 +110,10 @@ class TMDBService {
         };
     }
 
-    async getTrending(type: "all" | "movie" | "tv" = "all", timeWindow: "day" | "week" = "week"): Promise<MediaItem[]> {
+    async getTrending(type: "all" | "movie" | "tv" = "all", timeWindow: "day" | "week" = "day"): Promise<MediaItem[]> {
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/trending/${type}/${timeWindow}`);
         return data.results
-            .filter(item => item.media_type === "movie" || item.media_type === "tv")
+            .filter(item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0)
             .map(item => this.mapToMediaItem(item));
     }
 
@@ -123,7 +123,7 @@ class TMDBService {
             page: String(page),
         });
         return data.results
-            .filter(item => item.media_type === "movie" || item.media_type === "tv")
+            .filter(item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0)
             .map(item => this.mapToMediaItem(item));
     }
 
@@ -131,14 +131,18 @@ class TMDBService {
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/movie/${type}`, {
             page: String(page),
         });
-        return data.results.map(m => this.mapToMediaItem({ ...m, media_type: "movie" }));
+        return data.results
+            .filter(item => item.poster_path && item.vote_average > 0)
+            .map(m => this.mapToMediaItem({ ...m, media_type: "movie" }));
     }
 
     async getTVShows(type: "popular" | "top_rated" | "on_the_air" = "popular", page = 1): Promise<MediaItem[]> {
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/tv/${type}`, {
             page: String(page),
         });
-        return data.results.map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
+        return data.results
+            .filter(item => item.poster_path && item.vote_average > 0)
+            .map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
     }
 
     async getAnime(page = 1): Promise<MediaItem[]> {
@@ -148,7 +152,9 @@ class TMDBService {
             page: String(page),
             sort_by: "popularity.desc",
         });
-        return data.results.map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
+        return data.results
+            .filter(item => item.poster_path && item.vote_average > 4)
+            .map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
     }
 
     async getDetails(id: string, type: "movie" | "tv"): Promise<any> {
