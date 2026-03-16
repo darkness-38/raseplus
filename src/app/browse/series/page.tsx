@@ -55,17 +55,17 @@ export default function SeriesPage() {
                 className="px-4 sm:px-6 lg:px-12 mb-8 sm:mb-10"
             >
                 <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 font-heading uppercase tracking-tighter">
-                    DİZİLER
+                    SERIES
                 </h1>
                 <p className="text-sm sm:text-base text-white/40 max-w-2xl">
-                    En çok izlenen ve yeni çıkan dizileri keşfet. Tüm sezonları yerel ve global kaynaklardan takip et.
+                    Discover the most watched and latest series. Follow all seasons from local and global sources.
                 </p>
             </motion.div>
 
-            <ContentRow title="En Çok Oy Alan Diziler" items={topRated} variant="horizontal" />
+            <ContentRow title="Top Rated Series" items={topRated} variant="horizontal" />
             
             <div className="mt-10 space-y-12">
-                <ContentRow title="Yayında Olanlar" items={onTheAir} variant="horizontal" />
+                <ContentRow title="On The Air" items={onTheAir} variant="horizontal" />
                 
                 <motion.div
                     initial={{ opacity: 0 }}

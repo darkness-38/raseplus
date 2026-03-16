@@ -55,17 +55,17 @@ export default function MoviesPage() {
                 className="px-4 sm:px-6 lg:px-12 mb-8 sm:mb-10"
             >
                 <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 font-heading uppercase tracking-tighter">
-                    FİLMLER
+                    MOVIES
                 </h1>
                 <p className="text-sm sm:text-base text-white/40 max-w-2xl">
                     Discover the world's most popular and newest movies. Watch in the best quality from local and global sources.
                 </p>
             </motion.div>
 
-            <ContentRow title="En Çok Oy Alanlar" items={topRated} variant="horizontal" />
+            <ContentRow title="Top Rated Movies" items={topRated} variant="horizontal" />
             
             <div className="mt-10 space-y-12">
-                <ContentRow title="Yakında Gelecekler" items={upcoming} variant="horizontal" />
+                <ContentRow title="Coming Soon" items={upcoming} variant="horizontal" />
                 
                 <motion.div
                     initial={{ opacity: 0 }}

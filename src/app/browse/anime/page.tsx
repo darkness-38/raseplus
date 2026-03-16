@@ -68,7 +68,7 @@ export default function AnimePage() {
                 transition={{ delay: 0.2 }}
                 className="mt-12 px-4 sm:px-6 lg:px-12"
             >
-                <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Tüm Animeler</h2>
+                <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">All Anime</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                     {popular.map((item, i) => (
                         <ContentCard key={item.id} item={item} index={i} variant="vertical" />
