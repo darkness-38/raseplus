@@ -121,7 +121,20 @@ const NextIcon = () => (
 
 // ─── Main Component ───
 export default function VideoPlayer() {
-    const { playerItemId, playerTitle, closePlayer, nextEpisodeId, nextEpisodeTitle, openPlayer } = useStore();
+    const { 
+        playerItemId, 
+        playerTmdbId,
+        playerTitle, 
+        playerType,
+        playerSource,
+        playerSeason,
+        playerEpisode,
+        closePlayer, 
+        nextEpisodeId, 
+        nextEpisodeTitle, 
+        openPlayer 
+    } = useStore();
+    
     const videoRef = useRef<HTMLVideoElement>(null);
     const adVideoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -139,7 +152,15 @@ export default function VideoPlayer() {
     const [activeTab, setActiveTab] = useState<"quality" | "audio" | "subtitles">("quality");
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Track state (Metadata)
+    // ─── 1. Hybrid Source Logic ───
+    const isGlobal = playerSource === "global";
+    const embedUrl = isGlobal 
+        ? playerType === "movie"
+            ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
+            : `https://vidsrc.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`
+        : null;
+
+    // ... (rest of metadata & setup tracks)
     const [qualities, setQualities] = useState<{ index: number; height: number; bitrate: number }[]>([]);
     const [currentQuality, setCurrentQuality] = useState(-1);
     const [audioTracks, setAudioTracks] = useState<{ index: number; name: string; lang?: string }[]>([]);
@@ -633,25 +654,51 @@ export default function VideoPlayer() {
             onMouseMove={showControls}
             onClick={() => { if (showSettings) setShowSettings(false); }}
         >
-            {/* Main Video */}
-            <video
-                ref={videoRef}
-                className="w-full h-full object-contain"
-                onTimeUpdate={handleTimeUpdate}
-                onPlay={handlePlayPause}
-                onPause={handlePlayPause}
-                onClick={(e) => { e.stopPropagation(); if (!isAdPlaying) togglePlay(); }}
-                style={{ display: isAdPlaying ? 'none' : 'block' }}
-            />
+            {isGlobal ? (
+                <div className="relative w-full h-full">
+                    <iframe
+                        src={embedUrl!}
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                        sandbox="allow-forms allow-scripts allow-same-origin"
+                        loading="lazy"
+                    />
+                    {/* Transparent overlay to intercept some clicks/popups */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "transparent" }} />
+                    
+                    {/* Close button for global player since controls are in iframe */}
+                    {!isControlsVisible && (
+                        <button
+                            onClick={closePlayer}
+                            className="absolute top-6 left-6 p-3 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md transition-all z-20"
+                        >
+                            <BackIcon />
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <>
+                    {/* Main Video */}
+                    <video
+                        ref={videoRef}
+                        className="w-full h-full object-contain"
+                        onTimeUpdate={handleTimeUpdate}
+                        onPlay={handlePlayPause}
+                        onPause={handlePlayPause}
+                        onClick={(e) => { e.stopPropagation(); if (!isAdPlaying) togglePlay(); }}
+                        style={{ display: isAdPlaying ? 'none' : 'block' }}
+                    />
 
-            {/* Ad Video (overlay) */}
-            <video
-                ref={adVideoRef}
-                className="w-full h-full object-contain absolute inset-0"
-                onTimeUpdate={handleAdTimeUpdate}
-                onEnded={handleAdEnded}
-                style={{ display: isAdPlaying ? 'block' : 'none' }}
-            />
+                    {/* Ad Video (overlay) */}
+                    <video
+                        ref={adVideoRef}
+                        className="w-full h-full object-contain absolute inset-0"
+                        onTimeUpdate={handleAdTimeUpdate}
+                        onEnded={handleAdEnded}
+                        style={{ display: isAdPlaying ? 'block' : 'none' }}
+                    />
+                </>
+            )}
 
             {/* Loading Spinner */}
             {isLoading && !isAdPlaying && (

@@ -1,86 +1,153 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { jellyfin, JellyfinItem } from "@/lib/jellyfin";
-import { useStore } from "@/store/useStore";
+import { jellyfin } from "@/lib/jellyfin";
+import { tmdb } from "@/lib/tmdb";
+import { useStore, StreamSource } from "@/store/useStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { MediaItem } from "@/types/media";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface PageProps {
     params: Promise<{ id: string }>;
 }
 
-function formatRuntime(ticks?: number): string {
-    if (!ticks) return "";
-    const minutes = Math.round(ticks / 600000000);
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
 export default function ItemDetailPage({ params }: PageProps) {
     const { id } = use(params);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const initialSource = (searchParams.get("source") as StreamSource) || "tmdb";
+
     const isReady = useStore((s) => s.isJellyfinReady);
     const { openPlayer, setNextEpisode } = useStore();
 
-    const [item, setItem] = useState<JellyfinItem | null>(null);
-    const [seasons, setSeasons] = useState<JellyfinItem[]>([]);
-    const [episodes, setEpisodes] = useState<JellyfinItem[]>([]);
-    const [selectedSeason, setSelectedSeason] = useState<string>("");
-    const [similar, setSimilar] = useState<JellyfinItem[]>([]);
-    const [nextUp, setNextUp] = useState<JellyfinItem | null>(null);
+    const [item, setItem] = useState<MediaItem | null>(null);
+    const [source, setSource] = useState<StreamSource>(initialSource);
+    const [localItem, setLocalItem] = useState<any | null>(null);
+    
+    const [seasons, setSeasons] = useState<any[]>([]);
+    const [episodes, setEpisodes] = useState<any[]>([]);
+    const [selectedSeason, setSelectedSeason] = useState<number>(1);
+    const [similar, setSimilar] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [imageError, setImageError] = useState(false);
 
-    const isSeries = item?.Type === "Series";
-    const isMovie = item?.Type === "Movie";
-
     useEffect(() => {
-        if (!isReady || !id) return;
         const fetchItem = async () => {
+            setLoading(true);
             try {
-                const data = await jellyfin.getItem(id);
-                setItem(data);
-
-                if (data.Type === "Series") {
-                    const [s, nu] = await Promise.all([
-                        jellyfin.getSeasons(id),
-                        jellyfin.getNextUp(id),
-                    ]);
-                    setSeasons(s);
-                    setNextUp(nu);
-                    if (s.length > 0) {
-                        setSelectedSeason(s[0].Id);
+                if (source === "tmdb") {
+                    const tmdbData = await tmdb.getDetails(id, "movie"); // Default to movie, check tv later
+                    // If it fails as movie, it might be tv
+                    let type: "movie" | "tv" = "movie";
+                    let data = tmdbData;
+                    
+                    if (!data.title && !data.name) {
+                        data = await tmdb.getDetails(id, "tv");
+                        type = "tv";
+                    } else if (data.name && !data.title) {
+                        type = "tv";
                     }
-                }
 
-                const sim = await jellyfin.getSimilarItems(id, 12);
-                setSimilar(sim);
+                    const mapped = tmdb.mapToMediaItem({ ...data, media_type: type });
+                    setItem(mapped);
+
+                    if (type === "tv") {
+                        setSeasons(data.seasons || []);
+                        if (data.seasons?.length > 0) {
+                            setSelectedSeason(data.seasons[0].season_number);
+                        }
+                    }
+
+                    if (data.similar?.results) {
+                        setSimilar(data.similar.results.map((s: any) => tmdb.mapToMediaItem({ ...s, media_type: type })));
+                    }
+
+                    // Check if exists in Jellyfin
+                    if (isReady) {
+                        const local = await jellyfin.findItemByTmdbId(id);
+                        setLocalItem(local);
+                    }
+                } else {
+                    // Jellyfin source
+                    const data = await jellyfin.getItem(id);
+                    const mapped = jellyfin.mapToMediaItem(data);
+                    setItem(mapped);
+                    setLocalItem(data);
+
+                    if (data.Type === "Series") {
+                        const s = await jellyfin.getSeasons(id);
+                        setSeasons(s);
+                        if (s.length > 0) {
+                            setSelectedSeason(1); // Jellyfin uses IDs for seasons, but we can manage
+                        }
+                    }
+
+                    const sim = await jellyfin.getSimilarItems(id, 12);
+                    setSimilar(sim.map(s => jellyfin.mapToMediaItem(s)));
+                }
             } catch (e) {
                 console.error("Failed to fetch item:", e);
             } finally {
                 setLoading(false);
             }
         };
+
         fetchItem();
-    }, [isReady, id]);
+    }, [id, source, isReady]);
 
     useEffect(() => {
-        if (!selectedSeason || !item || item.Type !== "Series") return;
+        if (!item || item.type !== "tv") return;
+        
         const fetchEpisodes = async () => {
-            const eps = await jellyfin.getEpisodes(item.Id, selectedSeason);
-            setEpisodes(eps);
+            if (source === "tmdb") {
+                const data = await tmdb.getSeasonDetails(item.id, selectedSeason);
+                setEpisodes(data.episodes || []);
+            } else if (localItem) {
+                // For Jellyfin, we need the season ID. 
+                // We'll assume the season number matches or just fetch the first available for now to keep it simple
+                const jellySeasons = await jellyfin.getSeasons(localItem.Id);
+                const season = jellySeasons.find(s => s.IndexNumber === selectedSeason) || jellySeasons[0];
+                if (season) {
+                    const eps = await jellyfin.getEpisodes(localItem.Id, season.Id);
+                    setEpisodes(eps);
+                }
+            }
         };
         fetchEpisodes();
-    }, [selectedSeason, item]);
+    }, [selectedSeason, item, source, localItem]);
 
-    const handlePlayEpisode = (episode: JellyfinItem, index: number) => {
-        openPlayer(episode.Id, `${item?.Name} - ${episode.Name}`);
-        const nextEp = episodes[index + 1];
-        if (nextEp) {
-            setNextEpisode(nextEp.Id, `${item?.Name} - ${nextEp.Name}`);
-        } else {
-            setNextEpisode(null, null);
-        }
+    const handlePlay = () => {
+        if (!item) return;
+        openPlayer({
+            itemId: source === "local" ? item.id : localItem?.Id,
+            tmdbId: item.tmdbId || item.id,
+            title: item.title,
+            type: item.type as "movie" | "tv",
+            source: source === "jellyfin" ? "local" : "global",
+            season: item.type === "tv" ? selectedSeason : undefined,
+            episode: item.type === "tv" ? 1 : undefined,
+        });
+    };
+
+    const handlePlayEpisode = (ep: any, index: number) => {
+        if (!item) return;
+        openPlayer({
+            itemId: source === "jellyfin" ? ep.Id : undefined,
+            tmdbId: item.tmdbId || item.id,
+            title: `${item.title} - ${ep.name || ep.Name}`,
+            type: "tv",
+            source: source === "jellyfin" ? "local" : "global",
+            season: selectedSeason,
+            episode: ep.episode_number || ep.IndexNumber,
+        });
+    };
+
+    const toggleSource = () => {
+        const newSource = source === "tmdb" ? "jellyfin" : "tmdb";
+        setSource(newSource);
+        router.push(`/item/${id}?source=${newSource}`);
     };
 
     if (loading || !item) {
@@ -96,38 +163,24 @@ export default function ItemDetailPage({ params }: PageProps) {
         );
     }
 
-    const backdropUrl =
-        item.BackdropImageTags?.length
-            ? jellyfin.getImageUrl(item.Id, "Backdrop", { maxWidth: 1920, quality: 90 })
-            : item.ParentBackdropItemId && item.ParentBackdropImageTags?.length
-                ? jellyfin.getImageUrl(item.ParentBackdropItemId, "Backdrop", { maxWidth: 1920, quality: 90 })
-                : jellyfin.getImageUrl(item.Id, "Primary", { maxWidth: 1920 });
-
-    const logoUrl = item.ImageTags?.Logo
-        ? jellyfin.getImageUrl(item.Id, "Logo", { maxWidth: 500 })
-        : null;
-
-    const cast = item.People?.filter((p) => p.Type === "Actor")?.slice(0, 10) ?? [];
-
     return (
         <div className="min-h-screen pb-20">
             {/* Backdrop */}
             <div className="relative w-full h-[50vh] sm:h-[65vh] lg:h-[80vh]">
-                {!imageError ? (
-                    <motion.img
-                        initial={{ opacity: 0, scale: 1.05 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.8 }}
-                        src={backdropUrl}
-                        alt={item.Name}
-                        className="w-full h-full object-cover"
+                {!imageError && item.backdropPath ? (
+                    <Image
+                        src={item.backdropPath}
+                        alt={item.title}
+                        fill
+                        priority
+                        className="object-cover"
                         onError={() => setImageError(true)}
                     />
                 ) : (
                     <div className="w-full h-full" style={{ backgroundColor: "#000d2e" }} />
                 )}
-                <div className="absolute inset-0 backdrop-gradient" />
-                <div className="absolute inset-0 hero-gradient-left" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #00061a 0%, transparent 70%)" }} />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #00061a 0%, transparent 50%)" }} />
             </div>
 
             {/* Content */}
@@ -137,358 +190,125 @@ export default function ItemDetailPage({ params }: PageProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                 >
-                    {/* Logo or Title */}
-                    {logoUrl ? (
-                        <img
-                            src={logoUrl}
-                            alt={item.Name}
-                            className="h-16 sm:h-20 lg:h-32 object-contain mb-4 sm:mb-6 drop-shadow-2xl"
-                        />
-                    ) : (
-                        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-white mb-4 sm:mb-6 drop-shadow-2xl font-heading">
-                            {item.Name}
-                        </h1>
-                    )}
+                    <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-white mb-4 sm:mb-6 drop-shadow-2xl font-heading">
+                        {item.title}
+                    </h1>
 
                     {/* Meta Row */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6 text-xs sm:text-sm">
-                        {item.ProductionYear && (
-                            <span className="text-white/80 font-medium">
-                                {item.ProductionYear}
-                            </span>
+                        {item.year && (
+                            <span className="text-white/80 font-medium">{item.year}</span>
                         )}
-                        {item.OfficialRating && (
-                            <span className="px-2 py-0.5 border border-white/30 rounded text-[10px] sm:text-xs font-bold text-white/80">
-                                {item.OfficialRating}
-                            </span>
-                        )}
-                        {item.CommunityRating && (
+                        {item.rating > 0 && (
                             <span className="font-bold flex items-center gap-1" style={{ color: "#0DD6E8" }}>
-                                ★ {item.CommunityRating.toFixed(1)}
+                                ★ {item.rating.toFixed(1)}
                             </span>
                         )}
-                        {item.RunTimeTicks && (
-                            <span className="text-white/60">{formatRuntime(item.RunTimeTicks)}</span>
-                        )}
-                        {item.Genres?.slice(0, 3).map((g) => (
-                            <span
-                                key={g}
-                                className="hidden sm:inline px-3 py-1 rounded-full text-xs text-white/70"
-                                style={{
-                                    backgroundColor: "rgba(255,255,255,0.05)",
-                                    border: "1px solid rgba(255,255,255,0.06)",
-                                }}
-                            >
-                                {g}
-                            </span>
-                        ))}
+                        <span className="px-2 py-0.5 border border-white/30 rounded text-[10px] sm:text-xs font-bold text-white/80 uppercase">
+                            {item.type}
+                        </span>
+                        <span className="px-2 py-0.5 bg-white/10 rounded text-[10px] sm:text-xs font-bold text-cyan-400 uppercase">
+                            {source === "jellyfin" ? "Yerel Kitaplık" : "Global Stream"}
+                        </span>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 sm:mb-8">
-                        {isMovie && (
+                        <button
+                            onClick={handlePlay}
+                            className="px-8 py-4 bg-[#0DD6E8] text-black rounded-xl flex items-center justify-center gap-3 text-lg font-black hover:bg-cyan-400 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20"
+                        >
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            ŞİMDİ İZLE
+                        </button>
+
+                        {(localItem || source === "jellyfin") && (
                             <button
-                                onClick={() => openPlayer(item.Id, item.Name)}
-                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden"
+                                onClick={toggleSource}
+                                className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all border border-white/10"
                             >
-                                {/* Progress bar on movie button */}
-                                {item.UserData?.PlayedPercentage != null && item.UserData.PlayedPercentage > 0 && item.UserData.PlayedPercentage < 100 && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                                        <div
-                                            className="h-full rounded-r-full"
-                                            style={{
-                                                width: `${item.UserData.PlayedPercentage}%`,
-                                                background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                                <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
-                                {item.UserData?.PlayedPercentage != null && item.UserData.PlayedPercentage > 0 && item.UserData.PlayedPercentage < 100
-                                    ? "Resume"
-                                    : "Play"
-                                }
-                            </button>
-                        )}
-                        {isMovie && (
-                            <button
-                                onClick={() => {
-                                    const encodedUrl = encodeURIComponent(jellyfin.getDownloadUrl(item.Id));
-                                    const filename = encodeURIComponent(`${item.Name}.mp4`);
-                                    window.open(`/api/download?url=${encodedUrl}&filename=${filename}`, "_blank");
-                                }}
-                                className="btn-secondary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden bg-white/10 hover:bg-white/20 transition-colors rounded-lg"
-                            >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 9.75l-3 3m0 0l3 3m-3-3l3-3M3 13.5l6-3 6 3" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v13.5" />
-                                </svg>
-                                Download
-                            </button>
-                        )}
-                        {isSeries && (
-                            <button
-                                onClick={() => {
-                                    if (nextUp) {
-                                        openPlayer(nextUp.Id, `${item.Name} - ${nextUp.Name}`);
-                                    } else if (episodes.length > 0) {
-                                        handlePlayEpisode(episodes[0], 0);
-                                    }
-                                }}
-                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-lg font-bold relative overflow-hidden"
-                            >
-                                {/* Progress bar on series play button */}
-                                {nextUp?.UserData?.PlayedPercentage != null && nextUp.UserData.PlayedPercentage > 0 && nextUp.UserData.PlayedPercentage < 100 && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                                        <div
-                                            className="h-full rounded-r-full"
-                                            style={{
-                                                width: `${nextUp.UserData.PlayedPercentage}%`,
-                                                background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                                <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
-                                {nextUp
-                                    ? `Resume S${nextUp.ParentIndexNumber ?? 1}:E${nextUp.IndexNumber ?? 1}`
-                                    : "Play S1:E1"
-                                }
+                                {source === "tmdb" ? "Yerel Sunucuya Geç" : "Global Yayına Geç"}
                             </button>
                         )}
                     </div>
 
                     {/* Overview */}
-                    <p className="text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl mb-8 sm:mb-10 font-body" style={{ color: "rgba(255,255,255,0.6)" }}>
-                        {item.Overview}
+                    <p className="text-sm sm:text-base lg:text-lg leading-relaxed max-w-3xl mb-8 sm:mb-10 font-body text-white/60">
+                        {item.overview}
                     </p>
 
-                    {/* Studios */}
-                    {item.Studios && item.Studios.length > 0 && (
-                        <div className="mb-6 sm:mb-8">
-                            <span className="text-xs sm:text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>Studio: </span>
-                            <span className="text-xs sm:text-sm text-white">
-                                {item.Studios.map((s) => s.Name).join(", ")}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Cast */}
-                    {cast.length > 0 && (
+                    {/* Seasons & Episodes */}
+                    {item.type === "tv" && seasons.length > 0 && (
                         <div className="mb-10 sm:mb-12">
-                            <h3 className="text-base sm:text-lg font-bold text-white mb-4 font-heading">Cast</h3>
-                            <div className="flex gap-3 sm:gap-4 overflow-x-auto hide-scrollbar pb-2">
-                                {cast.map((person) => (
-                                    <div
-                                        key={person.Id}
-                                        className="flex flex-col items-center flex-shrink-0 w-16 sm:w-20"
+                            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto hide-scrollbar pb-2">
+                                {seasons.map((season) => (
+                                    <button
+                                        key={season.id || season.Id}
+                                        onClick={() => setSelectedSeason(season.season_number || season.IndexNumber)}
+                                        className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+                                            selectedSeason === (season.season_number || season.IndexNumber)
+                                                ? "bg-[#0DD6E8] text-black shadow-lg shadow-cyan-500/20"
+                                                : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
+                                        }`}
                                     >
-                                        <div
-                                            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden mb-2"
-                                            style={{
-                                                backgroundColor: "#000d2e",
-                                                border: "2px solid rgba(255,255,255,0.08)",
-                                            }}
-                                        >
-                                            {person.PrimaryImageTag ? (
-                                                <img
-                                                    src={jellyfin.getPersonImageUrl(
-                                                        person.Id,
-                                                        person.PrimaryImageTag
-                                                    )}
-                                                    alt={person.Name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-xl" style={{ color: "rgba(255,255,255,0.2)" }}>
-                                                    👤
-                                                </div>
-                                            )}
+                                        {season.name || season.Name}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="grid gap-3">
+                                {episodes.map((ep, i) => (
+                                    <div
+                                        key={ep.id || ep.Id}
+                                        onClick={() => handlePlayEpisode(ep, i)}
+                                        className="flex items-center gap-4 p-3 rounded-xl cursor-pointer group hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
+                                    >
+                                        <div className="w-8 text-center text-lg font-black text-white/20 group-hover:text-[#0DD6E8]">
+                                            {ep.episode_number || ep.IndexNumber}
                                         </div>
-                                        <p className="text-[10px] sm:text-xs text-white text-center truncate w-full">
-                                            {person.Name}
-                                        </p>
-                                        {person.Role && (
-                                            <p className="text-[9px] sm:text-[10px] text-center truncate w-full" style={{ color: "rgba(255,255,255,0.3)" }}>
-                                                {person.Role}
-                                            </p>
-                                        )}
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-white group-hover:text-[#0DD6E8] transition-colors">
+                                                {ep.name || ep.Name}
+                                            </h4>
+                                            <p className="text-xs text-white/40 line-clamp-1">{ep.overview || ep.Overview}</p>
+                                        </div>
+                                        <div className="hidden sm:block text-xs text-white/20 font-medium tabular-nums">
+                                            {ep.air_date || ep.PremiereDate ? new Date(ep.air_date || ep.PremiereDate).getFullYear() : ""}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {/* Seasons & Episodes */}
-                    {isSeries && seasons.length > 0 && (
-                        <div className="mb-10 sm:mb-12">
-                            {/* Season Tabs */}
-                            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto hide-scrollbar pb-2">
-                                {seasons.map((season) => (
-                                    <button
-                                        key={season.Id}
-                                        onClick={() => setSelectedSeason(season.Id)}
-                                        className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[40px]"
-                                        style={{
-                                            backgroundColor: selectedSeason === season.Id ? "#0DD6E8" : "rgba(255,255,255,0.05)",
-                                            color: selectedSeason === season.Id ? "#00061a" : "rgba(255,255,255,0.5)",
-                                            border: selectedSeason === season.Id ? "none" : "1px solid rgba(255,255,255,0.06)",
-                                            boxShadow: selectedSeason === season.Id ? "0 0 20px rgba(13,214,232,0.25)" : "none",
-                                            fontWeight: selectedSeason === season.Id ? 700 : 500,
-                                        }}
-                                    >
-                                        {season.Name}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Episode List */}
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={selectedSeason}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="space-y-2 sm:space-y-3"
-                                >
-                                    {episodes.map((ep, i) => (
-                                        <motion.div
-                                            key={ep.Id}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.05 }}
-                                            onClick={() => handlePlayEpisode(ep, i)}
-                                            className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 rounded-xl cursor-pointer group transition-all hover:bg-white/5"
-                                        >
-                                            {/* Episode Number + Thumbnail (mobile: side by side) */}
-                                            <div className="flex items-start gap-3 sm:gap-4">
-                                                {/* Episode Number */}
-                                                <div className="flex-shrink-0 w-6 sm:w-8 text-center pt-1 sm:pt-2">
-                                                    <span className="text-lg sm:text-xl font-bold transition-colors" style={{ color: "rgba(255,255,255,0.2)" }}>
-                                                        {ep.IndexNumber ?? i + 1}
-                                                    </span>
-                                                </div>
-
-                                                {/* Thumbnail */}
-                                                <div className="flex-shrink-0 w-28 sm:w-40 aspect-video rounded-lg overflow-hidden relative" style={{ backgroundColor: "#000d2e" }}>
-                                                    <img
-                                                        src={jellyfin.getImageUrl(ep.Id, "Primary", {
-                                                            maxWidth: 300,
-                                                        })}
-                                                        alt={ep.Name}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).style.display = "none";
-                                                        }}
-                                                    />
-                                                    {/* Play overlay */}
-                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                                                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
-                                                            <svg
-                                                                className="w-4 h-4 sm:w-5 sm:h-5 text-white ml-0.5"
-                                                                fill="currentColor"
-                                                                viewBox="0 0 24 24"
-                                                            >
-                                                                <path d="M8 5v14l11-7z" />
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                    {/* Episode progress bar */}
-                                                    {ep.UserData?.PlayedPercentage != null && ep.UserData.PlayedPercentage > 0 && (
-                                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
-                                                            <div
-                                                                className="h-full rounded-r-full"
-                                                                style={{
-                                                                    width: `${Math.min(ep.UserData.PlayedPercentage, 100)}%`,
-                                                                    background: "linear-gradient(90deg, #0DD6E8, #0ABDC9)",
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Info */}
-                                            <div className="flex-1 min-w-0 py-0 sm:py-1 pl-9 sm:pl-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <h4 className="text-xs sm:text-sm font-semibold text-white truncate transition-colors group-hover:text-[#0DD6E8]">
-                                                        {ep.Name}
-                                                    </h4>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const encodedUrl = encodeURIComponent(jellyfin.getDownloadUrl(ep.Id));
-                                                                const filename = encodeURIComponent(`${item.Name} - S${ep.ParentIndexNumber ?? 1}E${ep.IndexNumber ?? 1} - ${ep.Name}.mp4`);
-                                                                window.open(`/api/download?url=${encodedUrl}&filename=${filename}`, "_blank");
-                                                            }}
-                                                            className="p-1.5 rounded-full hover:bg-white/20 text-white/60 hover:text-white transition-colors"
-                                                            title="Download Episode"
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 9.75l-3 3m0 0l3 3m-3-3l3-3M3 13.5l6-3 6 3" />
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v13.5" />
-                                                            </svg>
-                                                        </button>
-                                                        {ep.RunTimeTicks && (
-                                                            <span className="text-[10px] sm:text-xs text-white/30 whitespace-nowrap">
-                                                                {formatRuntime(ep.RunTimeTicks)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <p className="text-[11px] sm:text-xs line-clamp-2 leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
-                                                    {ep.Overview ?? "No description available."}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-                    )}
-
-                    {/* Similar Content */}
+                    {/* Similar */}
                     {similar.length > 0 && (
                         <div>
-                            <h3 className="text-base sm:text-lg font-bold text-white mb-4 font-heading">
-                                More Like This
-                            </h3>
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
-                                {similar.map((sim) => (
-                                    <motion.a
-                                        key={sim.Id}
-                                        href={`/item/${sim.Id}`}
-                                        whileHover={{ scale: 1.05 }}
-                                        className="block"
+                            <h3 className="text-xl font-black text-white mb-6 font-heading uppercase tracking-wider">Benzer İçerikler</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {similar.slice(0, 6).map((sim) => (
+                                    <div
+                                        key={sim.id}
+                                        onClick={() => router.push(`/item/${sim.id}?source=${sim.source}`)}
+                                        className="cursor-pointer group"
                                     >
-                                        <div
-                                            className="aspect-[2/3] rounded-xl overflow-hidden"
-                                            style={{
-                                                backgroundColor: "#000d2e",
-                                                border: "1px solid rgba(255,255,255,0.05)",
-                                            }}
-                                        >
-                                            <img
-                                                src={jellyfin.getImageUrl(sim.Id, "Primary", {
-                                                    maxWidth: 300,
-                                                })}
-                                                alt={sim.Name}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).style.display = "none";
-                                                }}
+                                        <div className="aspect-[2/3] relative rounded-xl overflow-hidden border border-white/5 group-hover:border-[#0DD6E8]/40 transition-all">
+                                            <Image
+                                                src={sim.posterPath}
+                                                alt={sim.title}
+                                                fill
+                                                className="object-cover group-hover:scale-110 transition-transform duration-500"
                                             />
                                         </div>
-                                        <p className="text-xs sm:text-sm text-white mt-2 truncate">
-                                            {sim.Name}
+                                        <p className="mt-2 text-xs font-bold text-white/80 group-hover:text-[#0DD6E8] truncate transition-colors">
+                                            {sim.title}
                                         </p>
-                                    </motion.a>
+                                    </div>
                                 ))}
                             </div>
                         </div>

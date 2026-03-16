@@ -1,3 +1,5 @@
+import { MediaItem, MediaType } from "@/types/media";
+
 const JELLYFIN_BASE = "https://app.iloveteto.com";
 const JELLYFIN_USER = "rase";
 const JELLYFIN_PASS = "rase";
@@ -45,6 +47,7 @@ interface JellyfinItem {
     RunTimeTicks?: number;
     HasSubtitles?: boolean;
     MediaSources?: MediaSource[];
+    ProviderIds?: Record<string, string>;
     UserData?: {
         PlaybackPositionTicks?: number;
         PlayedPercentage?: number;
@@ -88,6 +91,21 @@ class JellyfinService {
                 : auth,
         };
         return h;
+    }
+
+    public mapToMediaItem(item: JellyfinItem): MediaItem {
+        return {
+            id: item.Id,
+            tmdbId: item.ProviderIds?.Tmdb || item.ProviderIds?.TMDB,
+            title: item.Name,
+            overview: item.Overview || "",
+            posterPath: this.getImageUrl(item.Id, "Primary"),
+            backdropPath: this.getImageUrl(item.Id, "Backdrop", { maxWidth: 1280 }),
+            rating: item.CommunityRating || 0,
+            year: String(item.ProductionYear || ""),
+            type: (item.Type === "Series" ? "tv" : "movie") as MediaType,
+            source: "jellyfin",
+        };
     }
 
     public getAuthorizationHeader(): string {
@@ -176,7 +194,7 @@ class JellyfinService {
     async getItem(itemId: string): Promise<JellyfinItem> {
         const params = new URLSearchParams({
             Fields:
-                "Overview,Genres,People,Studios,MediaStreams,MediaSources,CommunityRating,OfficialRating,UserData",
+                "Overview,Genres,People,Studios,MediaStreams,MediaSources,CommunityRating,OfficialRating,UserData,ProviderIds",
         });
         const res = await fetch(
             `${JELLYFIN_BASE}/Users/${this.userId}/Items/${itemId}?${params}`,
@@ -454,6 +472,23 @@ class JellyfinService {
         } catch {
             return null;
         }
+    }
+
+    async findItemByTmdbId(tmdbId: string): Promise<JellyfinItem | null> {
+        if (!this.userId) return null;
+        const params = new URLSearchParams({
+            AnyProviderIdEquals: `tmdb.${tmdbId}`,
+            Recursive: "true",
+            IncludeItemTypes: "Movie,Series",
+            Fields: "ProviderIds,Overview,PrimaryImageAspectRatio",
+            UserId: this.userId,
+        });
+        const res = await fetch(
+            `${JELLYFIN_BASE}/Users/${this.userId}/Items?${params}`,
+            { headers: this.headers }
+        );
+        const data: ItemsResponse = await res.json();
+        return data.Items?.[0] ?? null;
     }
 }
 

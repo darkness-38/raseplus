@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -33,6 +34,7 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.variable} antialiased bg-background text-foreground`}>
         <AuthProvider>{children}</AuthProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

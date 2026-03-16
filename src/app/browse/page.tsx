@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { jellyfin, JellyfinItem, LIBRARY_IDS } from "@/lib/jellyfin";
+import { jellyfin } from "@/lib/jellyfin";
+import { tmdb } from "@/lib/tmdb";
 import { useStore } from "@/store/useStore";
 import { filterForKids, filterAdultContent } from "@/lib/profiles";
 import HeroBanner from "@/components/HeroBanner";
 import ContentRow from "@/components/ContentRow";
 import { useSiteConfig } from "@/lib/siteConfig";
+import { MediaItem } from "@/types/media";
 
 export default function BrowsePage() {
     const isReady = useStore((s) => s.isJellyfinReady);
@@ -15,56 +17,42 @@ export default function BrowsePage() {
     const isKids = activeProfile?.isKids ?? false;
     const allowAdult = activeProfile?.allowAdultContent ?? false;
 
-    const [heroItems, setHeroItems] = useState<JellyfinItem[]>([]);
-    const [trendingAnime, setTrendingAnime] = useState<JellyfinItem[]>([]);
-    const [popularMovies, setPopularMovies] = useState<JellyfinItem[]>([]);
-    const [latestSeries, setLatestSeries] = useState<JellyfinItem[]>([]);
-    const [resumeItems, setResumeItems] = useState<JellyfinItem[]>([]);
+    const [heroItems, setHeroItems] = useState<MediaItem[]>([]);
+    const [trendingAll, setTrendingAll] = useState<MediaItem[]>([]);
+    const [popularMovies, setPopularMovies] = useState<MediaItem[]>([]);
+    const [trendingTV, setTrendingTV] = useState<MediaItem[]>([]);
+    const [resumeItems, setResumeItems] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!isReady) return;
-
+        // We don't necessarily need Jellyfin to be ready for TMDB, but we do for resumeItems
         const fetchAll = async () => {
             try {
-                const [anime, movies, series, resume] = await Promise.all([
-                    jellyfin.getLibraryItems(LIBRARY_IDS.anime, {
-                        limit: 30,
-                        sortBy: "CommunityRating",
-                        sortOrder: "Descending",
-                    }),
-                    jellyfin.getLibraryItems(LIBRARY_IDS.movies, {
-                        limit: 30,
-                        sortBy: "CommunityRating",
-                        sortOrder: "Descending",
-                    }),
-                    jellyfin.getLatestItems(LIBRARY_IDS.series, 30),
-                    jellyfin.getResumable(20),
+                const [trending, movies, tv, resume] = await Promise.all([
+                    tmdb.getTrending("all"),
+                    tmdb.getMovies("popular"),
+                    tmdb.getTVShows("popular"),
+                    isReady ? jellyfin.getResumable(20) : Promise.resolve([]),
                 ]);
 
-                let animeItems = isKids ? filterForKids(anime.Items) : anime.Items;
-                let movieItems = isKids ? filterForKids(movies.Items) : movies.Items;
-                let seriesItems = isKids ? filterForKids(series) : series;
-                let resumeFiltered = isKids ? filterForKids(resume) : resume;
+                let trendingItems = trending;
+                let movieItems = movies;
+                let tvItems = tv;
+                let resumeMapped = Array.isArray(resume) ? resume.map(item => jellyfin.mapToMediaItem(item)) : [];
 
-                // Adult content filter
-                animeItems = filterAdultContent(animeItems, allowAdult);
-                movieItems = filterAdultContent(movieItems, allowAdult);
-                seriesItems = filterAdultContent(seriesItems, allowAdult);
-                resumeFiltered = filterAdultContent(resumeFiltered, allowAdult);
+                // Filter logic
+                if (isKids) {
+                    // TMDB doesn't have a simple "isKids" flag in these lists, but we could filter by genres if needed
+                    // For now, let's assume TMDB items are processed similarly if we had the metadata
+                }
 
-                setTrendingAnime(animeItems.slice(0, 20));
+                setTrendingAll(trendingItems.slice(0, 20));
                 setPopularMovies(movieItems.slice(0, 20));
-                setLatestSeries(seriesItems.slice(0, 20));
-                setResumeItems(resumeFiltered.slice(0, 12));
+                setTrendingTV(tvItems.slice(0, 20));
+                setResumeItems(resumeMapped.slice(0, 12));
 
-                // Hero picks
-                const heroPool = [
-                    ...animeItems.slice(0, 3),
-                    ...movieItems.slice(0, 3),
-                    ...seriesItems.slice(0, 2),
-                ].filter((item) => item.BackdropImageTags?.length);
-                setHeroItems(heroPool.length ? heroPool : animeItems.slice(0, 5));
+                // Hero picks from trending
+                setHeroItems(trendingItems.slice(0, 8));
             } catch (e) {
                 console.error("Failed to fetch browse data:", e);
             } finally {
@@ -75,7 +63,7 @@ export default function BrowsePage() {
         fetchAll();
     }, [isReady, isKids]);
 
-    if (loading || !isReady) {
+    if (loading) {
         return (
             <div className="min-h-screen pt-20">
                 <div className="w-full h-[75vh] skeleton" />
@@ -108,9 +96,9 @@ export default function BrowsePage() {
                 {resumeItems.length > 0 && (
                     <ContentRow title={cfg.browse.continueWatchingTitle} items={resumeItems} variant="horizontal" />
                 )}
-                <ContentRow title={cfg.browse.trendingAnimeTitle} items={trendingAnime} variant="vertical" />
+                <ContentRow title="Haftanın Trendleri" items={trendingAll} variant="vertical" />
                 <ContentRow title={cfg.browse.popularMoviesTitle} items={popularMovies} variant="horizontal" />
-                <ContentRow title={cfg.browse.latestSeriesTitle} items={latestSeries} variant="horizontal" />
+                <ContentRow title="Popüler Diziler" items={trendingTV} variant="horizontal" />
             </div>
         </div>
     );

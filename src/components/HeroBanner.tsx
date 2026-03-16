@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { jellyfin, JellyfinItem } from "@/lib/jellyfin";
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { MediaItem } from "@/types/media";
 
 interface HeroBannerProps {
-    items: JellyfinItem[];
+    items: MediaItem[];
 }
 
 export default function HeroBanner({ items }: HeroBannerProps) {
@@ -17,6 +18,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
     const featured = items[currentIndex];
 
     const next = useCallback(() => {
+        if (!items.length) return;
         setCurrentIndex((i) => (i + 1) % items.length);
         setImageError(false);
     }, [items.length]);
@@ -27,86 +29,67 @@ export default function HeroBanner({ items }: HeroBannerProps) {
         return () => clearInterval(timer);
     }, [items.length, next]);
 
-    if (!items.length) return null;
+    if (!items.length || !featured) return null;
 
-    const backdropUrl =
-        featured.BackdropImageTags?.length
-            ? jellyfin.getImageUrl(featured.Id, "Backdrop", { maxWidth: 1920, quality: 85 })
-            : jellyfin.getImageUrl(featured.Id, "Primary", { maxWidth: 1920, quality: 85 });
-
-    const logoUrl = featured.ImageTags?.Logo
-        ? jellyfin.getImageUrl(featured.Id, "Logo", { maxWidth: 500 })
-        : null;
+    const backdropUrl = featured.backdropPath || featured.posterPath;
 
     return (
         <div className="relative w-full h-[60vh] sm:h-[70vh] lg:h-[85vh] overflow-hidden">
             {/* Backdrop */}
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={featured.Id}
+                    key={`${featured.id}-${currentIndex}`}
                     initial={{ opacity: 0, scale: 1.05 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 1 }}
                     className="absolute inset-0"
                 >
-                    {!imageError ? (
-                        <img
+                    {!imageError && backdropUrl ? (
+                        <Image
                             src={backdropUrl}
-                            alt={featured.Name}
-                            className="w-full h-full object-cover"
+                            alt={featured.title}
+                            fill
+                            className="object-cover"
+                            priority
                             onError={() => setImageError(true)}
                         />
                     ) : (
-                        <div className="w-full h-full bg-surface-light" />
+                        <div className="w-full h-full bg-[#000d2e]" />
                     )}
                 </motion.div>
             </AnimatePresence>
 
             {/* Gradient overlays */}
-            <div className="absolute inset-0 hero-gradient" />
-            <div className="absolute inset-0 hero-gradient-left" />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #00061a 0%, transparent 60%)" }} />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #00061a 0%, transparent 50%)" }} />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8 lg:p-16 pb-14 sm:pb-16 lg:pb-24">
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8 lg:p-16 pb-14 sm:pb-16 lg:pb-24 z-10">
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={featured.Id}
+                        key={featured.id}
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.6 }}
                         className="max-w-2xl"
                     >
-                        {/* Logo or Title */}
-                        {logoUrl ? (
-                            <img
-                                src={logoUrl}
-                                alt={featured.Name}
-                                className="h-12 sm:h-20 lg:h-28 object-contain mb-3 sm:mb-4 drop-shadow-2xl"
-                            />
-                        ) : (
-                            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-white mb-3 sm:mb-4 drop-shadow-2xl leading-tight font-heading">
-                                {featured.Name}
-                            </h1>
-                        )}
+                        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-white mb-3 sm:mb-4 drop-shadow-2xl leading-tight font-heading">
+                            {featured.title}
+                        </h1>
 
                         {/* Meta */}
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 text-xs sm:text-sm text-white/70">
-                            {featured.ProductionYear && (
-                                <span className="font-medium">{featured.ProductionYear}</span>
+                            {featured.year && (
+                                <span className="font-medium">{featured.year}</span>
                             )}
-                            {featured.OfficialRating && (
-                                <span className="px-2 py-0.5 border border-white/30 rounded text-[10px] sm:text-xs font-bold">
-                                    {featured.OfficialRating}
-                                </span>
-                            )}
-                            {featured.CommunityRating && (
+                            {featured.rating > 0 && (
                                 <span className="font-bold flex items-center gap-1" style={{ color: "#0DD6E8" }}>
-                                    ★ {featured.CommunityRating.toFixed(1)}
+                                    ★ {featured.rating.toFixed(1)}
                                 </span>
                             )}
-                            {featured.Genres?.slice(0, 2).map((g) => (
+                            {featured.genres?.slice(0, 2).map((g) => (
                                 <span key={g} className="hidden sm:inline text-white/50">
                                     {g}
                                 </span>
@@ -115,14 +98,14 @@ export default function HeroBanner({ items }: HeroBannerProps) {
 
                         {/* Overview */}
                         <p className="text-sm sm:text-base text-white/70 line-clamp-2 sm:line-clamp-3 mb-4 sm:mb-6 leading-relaxed max-w-xl font-body">
-                            {featured.Overview}
+                            {featured.overview}
                         </p>
 
                         {/* Buttons */}
                         <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-3 sm:flex-row">
                             <button
-                                onClick={() => router.push(`/item/${featured.Id}`)}
-                                className="btn-primary flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base font-bold"
+                                onClick={() => router.push(`/item/${featured.id}?source=${featured.source}`)}
+                                className="px-6 sm:px-8 py-3 sm:py-3.5 bg-[#0DD6E8] text-black rounded-full flex items-center justify-center gap-2 text-sm sm:text-base font-bold hover:bg-cyan-400 transition-all hover:scale-105 active:scale-95"
                             >
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M8 5v14l11-7z" />
@@ -130,7 +113,7 @@ export default function HeroBanner({ items }: HeroBannerProps) {
                                 Play
                             </button>
                             <button
-                                onClick={() => router.push(`/item/${featured.Id}`)}
+                                onClick={() => router.push(`/item/${featured.id}?source=${featured.source}`)}
                                 className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-sm sm:text-base font-semibold text-white/70 hover:bg-white/10 transition-all"
                                 style={{
                                     border: "1px solid rgba(255,255,255,0.1)",

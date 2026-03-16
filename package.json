@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/speed-insights": "^2.0.0",
     "firebase": "^12.9.0",
     "framer-motion": "^12.34.2",
     "hls.js": "^1.6.15",

@@ -2,11 +2,13 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { jellyfin, JellyfinItem } from "@/lib/jellyfin";
+import { jellyfin } from "@/lib/jellyfin";
 import { useState } from "react";
+import Image from "next/image";
+import { MediaItem } from "@/types/media";
 
 interface ContentCardProps {
-    item: JellyfinItem;
+    item: MediaItem;
     index?: number;
     variant?: "vertical" | "horizontal";
 }
@@ -18,20 +20,15 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
 
     const isHorizontal = variant === "horizontal";
 
-    const posterUrl = jellyfin.getImageUrl(item.Id, "Primary", { maxWidth: isHorizontal ? 600 : 400 });
-    const backdropUrl = item.BackdropImageTags?.length
-        ? jellyfin.getImageUrl(item.Id, "Backdrop", { maxWidth: 800 })
-        : null;
-
-    // For horizontal cards, we prefer backdrop. For vertical, we prefer primary (poster).
-    const displayImageUrl = isHorizontal ? (backdropUrl || posterUrl) : posterUrl;
+    // item.posterPath and item.backdropPath are already mapped in our services
+    const displayImageUrl = isHorizontal ? (item.backdropPath || item.posterPath) : item.posterPath;
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.04 }}
-            onClick={() => router.push(`/item/${item.Id}`)}
+            onClick={() => router.push(`/item/${item.id}?source=${item.source}`)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={`group relative flex-shrink-0 cursor-pointer snap-start transition-all duration-300 ${isHorizontal
@@ -48,15 +45,18 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
                     boxShadow: isHovered ? "0 0 30px rgba(13,214,232,0.15)" : "none",
                 }}
             >
-                {!imageError ? (
-                    <motion.img
-                        src={displayImageUrl}
-                        alt={item.Name}
-                        className="w-full h-full object-cover"
-                        animate={{ scale: isHovered ? 1.08 : 1 }}
-                        transition={{ duration: 0.4 }}
-                        onError={() => setImageError(true)}
-                    />
+                {!imageError && displayImageUrl ? (
+                    <div className="relative w-full h-full">
+                        <Image
+                            src={displayImageUrl}
+                            alt={item.title}
+                            fill
+                            className="object-cover transition-transform duration-500"
+                            style={{ transform: isHovered ? "scale(1.08)" : "scale(1)" }}
+                            sizes={isHorizontal ? "(max-width: 768px) 280px, 360px" : "(max-width: 768px) 160px, 200px"}
+                            onError={() => setImageError(true)}
+                        />
+                    </div>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-white/20" style={{ backgroundColor: "#000d2e" }}>
                         <svg className="w-10 h-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -70,21 +70,21 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
                     initial={false}
                     animate={{ opacity: isHovered ? 1 : 0 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4"
+                    className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4 z-20"
                     style={{ background: "linear-gradient(to top, rgba(0,6,26,0.9) 0%, rgba(0,6,26,0.3) 50%, transparent 100%)" }}
                 >
                     <p className={`text-white/80 line-clamp-3 leading-tight ${isHorizontal ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
                         }`}>
-                        {item.Overview ?? ""}
+                        {item.overview ?? ""}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                        {item.CommunityRating && (
+                        {item.rating > 0 && (
                             <span className="text-[10px] sm:text-xs font-bold flex items-center gap-0.5" style={{ color: "#0DD6E8" }}>
-                                ★ {item.CommunityRating.toFixed(1)}
+                                ★ {item.rating.toFixed(1)}
                             </span>
                         )}
-                        {item.ProductionYear && (
-                            <span className="text-[10px] sm:text-xs text-white/50">{item.ProductionYear}</span>
+                        {item.year && (
+                            <span className="text-[10px] sm:text-xs text-white/50">{item.year}</span>
                         )}
                     </div>
                 </motion.div>
@@ -95,7 +95,16 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
                         className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase rounded-md text-white backdrop-blur-md"
                         style={{ backgroundColor: "rgba(13,214,232,0.8)" }}
                     >
-                        {item.Type === "Series" ? "TV" : item.Type}
+                        {item.type === "tv" ? "TV" : item.type}
+                    </span>
+                </div>
+
+                {/* Source Badge */}
+                <div className="absolute top-2 right-2 z-10">
+                    <span
+                        className="px-1.5 py-0.5 text-[8px] font-medium uppercase rounded-md text-white/70 bg-black/40 backdrop-blur-sm border border-white/10"
+                    >
+                        {item.source}
                     </span>
                 </div>
             </div>
@@ -104,10 +113,10 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
             <div className="mt-2.5 px-0.5">
                 <p className={`font-medium text-white truncate transition-colors ${isHorizontal ? "text-sm sm:text-base" : "text-xs sm:text-sm"
                     }`} style={{ color: isHovered ? "#0DD6E8" : "white" }}>
-                    {item.Name}
+                    {item.title}
                 </p>
                 <p className="text-[10px] sm:text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    {item.ProductionYear ? `${item.ProductionYear} • ` : ""}{item.Type}
+                    {item.year ? `${item.year} • ` : ""}{item.type}
                 </p>
             </div>
         </motion.div>

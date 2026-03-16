@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { Profile } from "@/lib/profiles";
 
+export type StreamSource = "local" | "global";
+
 interface AppState {
     isJellyfinReady: boolean;
     setJellyfinReady: (ready: boolean) => void;
@@ -16,9 +18,25 @@ interface AppState {
     // Player state
     isPlayerOpen: boolean;
     playerItemId: string | null;
+    playerTmdbId: string | null;
     playerTitle: string;
-    openPlayer: (itemId: string, title: string) => void;
+    playerType: "movie" | "tv";
+    playerSource: StreamSource;
+    playerSeason: number;
+    playerEpisode: number;
+    
+    openPlayer: (options: {
+        itemId?: string;
+        tmdbId?: string;
+        title: string;
+        type: "movie" | "tv";
+        source?: StreamSource;
+        season?: number;
+        episode?: number;
+    }) => void;
     closePlayer: () => void;
+    setPlayerSource: (source: StreamSource) => void;
+    setPlayerEpisode: (season: number, episode: number) => void;
 
 
     // Next episode
@@ -67,17 +85,35 @@ export const useStore = create<AppState>((set) => ({
 
     isPlayerOpen: false,
     playerItemId: null,
+    playerTmdbId: null,
     playerTitle: "",
-    openPlayer: (itemId, title) =>
-        set({ isPlayerOpen: true, playerItemId: itemId, playerTitle: title }),
+    playerType: "movie",
+    playerSource: "local",
+    playerSeason: 1,
+    playerEpisode: 1,
+
+    openPlayer: (opts) =>
+        set({
+            isPlayerOpen: true,
+            playerItemId: opts.itemId || null,
+            playerTmdbId: opts.tmdbId || null,
+            playerTitle: opts.title,
+            playerType: opts.type,
+            playerSource: opts.source || "local",
+            playerSeason: opts.season || 1,
+            playerEpisode: opts.episode || 1,
+        }),
     closePlayer: () =>
         set({
             isPlayerOpen: false,
             playerItemId: null,
+            playerTmdbId: null,
             playerTitle: "",
             nextEpisodeId: null,
             nextEpisodeTitle: null,
         }),
+    setPlayerSource: (source) => set({ playerSource: source }),
+    setPlayerEpisode: (season, episode) => set({ playerSeason: season, playerEpisode: episode }),
 
 
     nextEpisodeId: null,
