@@ -16,7 +16,9 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed";
+type SourceType = "dublaj" | "superembed" | "autoembed" | "2embed";
+
+const STORAGE_KEY = "rase-preferred-source";
 
 export default function VideoPlayer() {
     const { 
@@ -32,8 +34,25 @@ export default function VideoPlayer() {
     const [activeSource, setActiveSource] = useState<SourceType>("superembed");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Initial load from localStorage
+    useEffect(() => {
+        const savedSource = localStorage.getItem(STORAGE_KEY) as SourceType | null;
+        if (savedSource && ["dublaj", "superembed", "autoembed", "2embed"].includes(savedSource)) {
+            setActiveSource(savedSource);
+        }
+    }, []);
+
+    const handleSourceChange = (source: SourceType) => {
+        setActiveSource(source);
+        localStorage.setItem(STORAGE_KEY, source);
+    };
+
     const getEmbedUrl = () => {
         switch (activeSource) {
+            case "dublaj":
+                return playerType === "movie"
+                    ? `https://vidsrc.icu/embed/movie/${playerTmdbId}`
+                    : `https://vidsrc.icu/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
@@ -130,21 +149,28 @@ export default function VideoPlayer() {
                             {/* Source Selection Marquee */}
                             <div className="flex flex-wrap justify-center gap-2 pointer-events-auto bg-black/40 p-2 rounded-2xl backdrop-blur-md border border-white/5">
                                 <button 
-                                    onClick={() => setActiveSource("superembed")}
+                                    onClick={() => handleSourceChange("dublaj")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "dublaj" ? "bg-amber-600 text-white shadow-[0_0_15px_rgba(217,119,6,0.5)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Kaynak 4 (Dublaj/Global)
+                                </button>
+                                <button 
+                                    onClick={() => handleSourceChange("superembed")}
                                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "superembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
                                     Kaynak 1 (En Stabil)
                                 </button>
                                 <button 
-                                    onClick={() => setActiveSource("autoembed")}
+                                    onClick={() => handleSourceChange("autoembed")}
                                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "autoembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
                                     Kaynak 2 (Yedek)
                                 </button>
                                 <button 
-                                    onClick={() => setActiveSource("2embed")}
+                                    onClick={() => handleSourceChange("2embed")}
                                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "2embed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
@@ -153,8 +179,8 @@ export default function VideoPlayer() {
                             </div>
 
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
-                                Yayın açılmazsa veya donma yaparsa lütfen yukarıdaki farklı kaynakları deneyin.
-                                {playerType === "tv" && " Anime izliyorsanız Kaynak 1 üzerinden CC ikonuna tıklayıp altyazı şeçebilirsiniz."}
+                                Yayın açılmazsa veya donma yaparsa lütfen yukarıdaki farklı kaynakları deneyin.<br/>
+                                <span className="text-amber-400 font-medium">Dublaj seçeneği için video içindeki sunucu listesini kontrol edin.</span>
                             </p>
                         </motion.div>
                     )}
