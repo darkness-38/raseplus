@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useStore } from "@/store/useStore";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -9,6 +9,14 @@ const BackIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
     </svg>
 );
+
+const SourceIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Z" />
+    </svg>
+);
+
+type SourceType = "superembed" | "autoembed" | "2embed";
 
 export default function VideoPlayer() {
     const { 
@@ -21,34 +29,59 @@ export default function VideoPlayer() {
     } = useStore();
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
+    const [activeSource, setActiveSource] = useState<SourceType>("superembed");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    const embedUrl = playerType === "movie"
-        ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
-        : `https://vidsrc.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
+    const getEmbedUrl = () => {
+        switch (activeSource) {
+            case "superembed":
+                return playerType === "movie"
+                    ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
+                    : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
+            case "autoembed":
+                return playerType === "movie"
+                    ? `https://player.autoembed.cc/embed/movie/${playerTmdbId}`
+                    : `https://player.autoembed.cc/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
+            case "2embed":
+                return playerType === "movie"
+                    ? `https://www.2embed.cc/embed/${playerTmdbId}`
+                    : `https://www.2embed.cc/embedtv/${playerTmdbId}&s=${playerSeason}&e=${playerEpisode}`;
+            default:
+                return "";
+        }
+    };
 
-    console.log("Oynatılan URL:", embedUrl);
+    const embedUrl = getEmbedUrl();
 
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
         if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
         controlTimeoutRef.current = setTimeout(() => {
             setIsControlsVisible(false);
-        }, 3000);
+        }, 4000);
     }, []);
+
+    // Also hide controls after initial mount
+    useEffect(() => {
+        showControls();
+        return () => {
+            if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
+        };
+    }, [showControls]);
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+            className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-0 sm:p-4"
             onMouseMove={showControls}
+            onTouchStart={showControls}
         >
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full max-w-[1920px] rounded-0 sm:rounded-xl overflow-hidden shadow-2xl bg-black/90">
                 <iframe
                     src={embedUrl}
-                    className="w-full h-full border-0 relative z-50"
+                    className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
                     allow="autoplay; fullscreen"
                     referrerPolicy="origin"
@@ -63,39 +96,65 @@ export default function VideoPlayer() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="absolute top-0 left-0 right-0 p-6 sm:p-10 flex items-center justify-between z-20 pointer-events-none"
+                            className="absolute top-0 left-0 right-0 p-4 sm:p-8 flex flex-col sm:flex-row items-center justify-between z-20 pointer-events-none gap-4"
                             style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)" }}
                         >
-                            <button
-                                onClick={closePlayer}
-                                className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all pointer-events-auto group"
-                            >
-                                <BackIcon />
-                            </button>
-                            <div className="text-center flex-1 mx-4">
-                                <h2 className="text-white font-bold text-lg sm:text-2xl drop-shadow-md truncate">{playerTitle}</h2>
-                                {playerType === "tv" && (
-                                    <p className="text-white/60 text-xs sm:text-sm font-medium">Sezon {playerSeason}, Bölüm {playerEpisode}</p>
-                                )}
+                            <div className="flex items-center w-full sm:w-auto">
+                                <button
+                                    onClick={closePlayer}
+                                    className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all pointer-events-auto group flex-shrink-0"
+                                >
+                                    <BackIcon />
+                                </button>
+                                <div className="ml-4 truncate">
+                                    <h2 className="text-white font-bold text-lg sm:text-xl drop-shadow-md truncate">{playerTitle}</h2>
+                                    {playerType === "tv" && (
+                                        <p className="text-white/70 text-sm font-medium">Sezon {playerSeason}, Bölüm {playerEpisode}</p>
+                                    )}
+                                </div>
                             </div>
-                            <div className="w-12" />
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* Footer Warnings */}
+                {/* Footer Controls & Sources */}
                 <AnimatePresence>
                     {isControlsVisible && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex flex-col items-center justify-end z-[60] pointer-events-none"
-                            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)" }}
+                            className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 flex flex-col items-center justify-end z-[60] pointer-events-none gap-4"
+                            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)" }}
                         >
-                            <p className="text-white/80 text-xs sm:text-sm text-center drop-shadow-md bg-black/40 px-4 py-2 rounded-full backdrop-blur-md">
-                                Videoyu başlatmak veya sesi açmak için ekrana tıklayın.
-                                {playerType === "tv" && " Anime izliyorsanız İngilizce altyazı için CC butonunu kullanın."}
+                            {/* Source Selection Marquee */}
+                            <div className="flex flex-wrap justify-center gap-2 pointer-events-auto bg-black/40 p-2 rounded-2xl backdrop-blur-md border border-white/5">
+                                <button 
+                                    onClick={() => setActiveSource("superembed")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "superembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Kaynak 1 (En Stabil)
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("autoembed")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "autoembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Kaynak 2 (Yedek)
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("2embed")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "2embed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Kaynak 3 (Yedek)
+                                </button>
+                            </div>
+
+                            <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
+                                Yayın açılmazsa veya donma yaparsa lütfen yukarıdaki farklı kaynakları deneyin.
+                                {playerType === "tv" && " Anime izliyorsanız Kaynak 1 üzerinden CC ikonuna tıklayıp altyazı şeçebilirsiniz."}
                             </p>
                         </motion.div>
                     )}
