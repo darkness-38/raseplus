@@ -90,6 +90,13 @@ export default function VideoPlayer() {
 
     const embedUrl = getEmbedUrl();
 
+    const getReferrerPolicy = (): React.IframeHTMLAttributes<HTMLIFrameElement>["referrerPolicy"] => {
+        if (activeSource === "autoembed-tr" || activeSource === "vidsrc") {
+            return "no-referrer-when-downgrade";
+        }
+        return "origin";
+    };
+
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
         if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current);
@@ -117,11 +124,12 @@ export default function VideoPlayer() {
         >
             <div className="relative w-full h-full max-w-[1920px] rounded-0 sm:rounded-xl overflow-hidden shadow-2xl bg-black/90">
                 <iframe
+                    key={embedUrl}
                     src={embedUrl}
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                    referrerPolicy="origin"
+                    referrerPolicy={getReferrerPolicy()}
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
                     loading="lazy"
                 />
