@@ -24,8 +24,10 @@ export default function VideoPlayer() {
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const embedUrl = playerType === "movie"
-        ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
-        : `https://vidsrc.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
+        ? `https://vidsrc.me/embed/movie?tmdb=${playerTmdbId}`
+        : `https://vidsrc.me/embed/tv?tmdb=${playerTmdbId}&season=${playerSeason}&episode=${playerEpisode}`;
+
+    console.log("Oynatılan URL:", embedUrl);
 
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
@@ -46,14 +48,13 @@ export default function VideoPlayer() {
             <div className="relative w-full h-full">
                 <iframe
                     src={embedUrl}
-                    className="w-full h-full border-0"
+                    className="w-full h-full border-0 relative z-50"
                     allowFullScreen
-                    sandbox="allow-forms allow-scripts allow-same-origin"
+                    allow="autoplay; fullscreen"
+                    referrerPolicy="origin"
+                    sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
                     loading="lazy"
                 />
-                
-                {/* Transparent overlay to minimize popup clicks on the edges */}
-                <div className="absolute inset-0 pointer-events-none z-10" />
                 
                 {/* Header Controls */}
                 <AnimatePresence>
@@ -78,6 +79,24 @@ export default function VideoPlayer() {
                                 )}
                             </div>
                             <div className="w-12" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Footer Warnings */}
+                <AnimatePresence>
+                    {isControlsVisible && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex flex-col items-center justify-end z-[60] pointer-events-none"
+                            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)" }}
+                        >
+                            <p className="text-white/80 text-xs sm:text-sm text-center drop-shadow-md bg-black/40 px-4 py-2 rounded-full backdrop-blur-md">
+                                Videoyu başlatmak veya sesi açmak için ekrana tıklayın.
+                                {playerType === "tv" && " Anime izliyorsanız İngilizce altyazı için CC butonunu kullanın."}
+                            </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
