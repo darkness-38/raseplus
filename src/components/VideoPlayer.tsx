@@ -24,8 +24,8 @@ export default function VideoPlayer() {
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const embedUrl = playerType === "movie"
-        ? `https://vidsrc.me/embed/movie?tmdb=${playerTmdbId}`
-        : `https://vidsrc.me/embed/tv?tmdb=${playerTmdbId}&season=${playerSeason}&episode=${playerEpisode}`;
+        ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
+        : `https://vidsrc.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
 
     console.log("Oynatılan URL:", embedUrl);
 
