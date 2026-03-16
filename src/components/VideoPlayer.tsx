@@ -17,7 +17,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed" | "autoembed-tr" | "vidsrc";
+type SourceType = "superembed" | "autoembed" | "2embed";
 
 export default function VideoPlayer() {
     const { 
@@ -75,27 +75,12 @@ export default function VideoPlayer() {
                 return playerType === "movie"
                     ? `https://www.2embed.cc/embed/${playerTmdbId}`
                     : `https://www.2embed.cc/embedtv/${playerTmdbId}&s=${playerSeason}&e=${playerEpisode}`;
-            case "autoembed-tr":
-                return playerType === "movie"
-                    ? `https://autoembed.to/movie/tmdb/${playerTmdbId}?lang=tr`
-                    : `https://autoembed.to/tv/tmdb/${playerTmdbId}/${playerSeason}/${playerEpisode}?lang=tr`;
-            case "vidsrc":
-                return playerType === "movie"
-                    ? `https://vidsrc.to/embed/movie/${playerTmdbId}`
-                    : `https://vidsrc.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
             default:
                 return "";
         }
     };
 
     const embedUrl = getEmbedUrl();
-
-    const getReferrerPolicy = (): React.IframeHTMLAttributes<HTMLIFrameElement>["referrerPolicy"] => {
-        if (activeSource === "autoembed-tr" || activeSource === "vidsrc") {
-            return "no-referrer-when-downgrade";
-        }
-        return "origin";
-    };
 
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
@@ -129,7 +114,7 @@ export default function VideoPlayer() {
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                    referrerPolicy={getReferrerPolicy()}
+                    referrerPolicy="origin"
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
                     loading="lazy"
                 />
@@ -194,20 +179,6 @@ export default function VideoPlayer() {
                                 >
                                     <SourceIcon />
                                     Source 3 (Fallback)
-                                </button>
-                                <button 
-                                    onClick={() => setActiveSource("autoembed-tr")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "autoembed-tr" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 4 (TR Dub)
-                                </button>
-                                <button 
-                                    onClick={() => setActiveSource("vidsrc")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "vidsrc" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 5 (TR Dub)
                                 </button>
                             </div>
 
