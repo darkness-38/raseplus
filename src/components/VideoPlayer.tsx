@@ -16,7 +16,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "vidmoly" | "superembed" | "autoembed" | "2embed";
+type SourceType = "superembed" | "autoembed" | "2embed" | "atom";
 
 export default function VideoPlayer() {
     const { 
@@ -29,15 +29,16 @@ export default function VideoPlayer() {
     } = useStore();
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
-    const [activeSource, setActiveSource] = useState<SourceType>("vidmoly");
+    const [activeSource, setActiveSource] = useState<SourceType>("superembed");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const getEmbedUrl = () => {
         switch (activeSource) {
-            case "vidmoly":
+            case "atom":
                 return playerType === "movie"
-                    ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
-                    : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
+                    ? `https://atom.live/embed/movie/${playerTmdbId}`
+                    : `https://atom.live/embed/tv/${playerTmdbId}?s=${playerSeason}&e=${playerEpisode}`;
+
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
@@ -88,8 +89,8 @@ export default function VideoPlayer() {
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
                     allow="autoplay; fullscreen; picture-in-picture"
-                    referrerPolicy="no-referrer"
-                    sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
+                    referrerPolicy="origin"
+                    sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
                     loading="lazy"
                 />
                 
@@ -155,12 +156,13 @@ export default function VideoPlayer() {
                                     Source 3 (Fallback)
                                 </button>
                                 <button 
-                                    onClick={() => setActiveSource("vidmoly")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "vidmoly" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                    onClick={() => setActiveSource("atom")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "atom" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
-                                    Source 4 (Vidmoly)
+                                    Source 4 (Atom)
                                 </button>
+
                             </div>
 
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
