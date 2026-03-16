@@ -36,8 +36,8 @@ export default function VideoPlayer() {
         switch (activeSource) {
             case "vidmoly":
                 return playerType === "movie"
-                    ? `https://vidsrc.pro/embed/movie/${playerTmdbId}?adapter=vidmoly`
-                    : `https://vidsrc.pro/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}?adapter=vidmoly`;
+                    ? `https://vidsrc.pro/embed/movie/${playerTmdbId}?ds_lang=tr&adapter=vidmoly`
+                    : `https://vidsrc.pro/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}?ds_lang=tr&adapter=vidmoly`;
             case "superembed":
                 return playerType === "movie"
                     ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
@@ -88,7 +88,7 @@ export default function VideoPlayer() {
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
                     allow="autoplay; fullscreen; picture-in-picture"
-                    referrerPolicy="origin"
+                    referrerPolicy="no-referrer"
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation"
                     loading="lazy"
                 />

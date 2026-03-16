@@ -117,7 +117,7 @@ export default function SearchPage() {
                         type="text"
                         value={query}
                         onChange={(e) => handleInputChange(e.target.value)}
-                        placeholder="Film, dizi veya oyuncu ara..."
+                        placeholder="Search for movies, series or actors..."
                         className="w-full pl-12 sm:pl-14 pr-12 py-3.5 sm:py-4 rounded-lg text-white text-sm sm:text-base focus:outline-none transition-all font-body bg-white/5 border border-white/5 focus:border-cyan-500/30 focus:bg-white/10"
                     />
 
@@ -154,7 +154,7 @@ export default function SearchPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="flex flex-col items-center justify-center py-20"
                     >
-                        <p className="text-base font-medium text-white/50">&quot;{query}&quot; için sonuç bulunamadı.</p>
+                        <p className="text-base font-medium text-white/50">No results found for &quot;{query}&quot;.</p>
                     </motion.div>
                 )}
 
