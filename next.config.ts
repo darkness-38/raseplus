@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // No remote patterns needed currently as we are using local avatars
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "image.tmdb.org",
+        pathname: "/t/p/**",
+      },
+      {
+        protocol: "https",
+        hostname: "app.iloveteto.com",
+        pathname: "/**",
+      }
+    ],
+  },
 };
 
 export default nextConfig;

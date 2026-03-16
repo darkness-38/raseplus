@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Profile } from "@/lib/profiles";
 
-export type StreamSource = "local" | "global";
+export type StreamSource = "jellyfin" | "tmdb";
 
 interface AppState {
     isJellyfinReady: boolean;

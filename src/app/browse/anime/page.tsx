@@ -1,47 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { jellyfin, JellyfinItem, LIBRARY_IDS } from "@/lib/jellyfin";
+import { tmdb } from "@/lib/tmdb";
 import { useStore } from "@/store/useStore";
-import { filterForKids, filterAdultContent } from "@/lib/profiles";
 import ContentRow from "@/components/ContentRow";
 import ContentCard from "@/components/ContentCard";
 import { motion } from "framer-motion";
-import { useSiteConfig } from "@/lib/siteConfig";
+import { MediaItem } from "@/types/media";
 
 export default function AnimePage() {
-    const isReady = useStore((s) => s.isJellyfinReady);
-    const activeProfile = useStore((s) => s.activeProfile);
-    const isKids = activeProfile?.isKids ?? false;
-    const allowAdult = activeProfile?.allowAdultContent ?? false;
-
-    const [items, setItems] = useState<JellyfinItem[]>([]);
-    const [topRated, setTopRated] = useState<JellyfinItem[]>([]);
+    const [popular, setPopular] = useState<MediaItem[]>([]);
+    const [trending, setTrending] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const { config: cfg } = useSiteConfig();
 
     useEffect(() => {
-        if (!isReady) return;
         const fetch = async () => {
             try {
-                const [all, top] = await Promise.all([
-                    jellyfin.getLibraryItems(LIBRARY_IDS.anime, {
-                        limit: 60,
-                        sortBy: "DateCreated",
-                        sortOrder: "Descending",
-                    }),
-                    jellyfin.getLibraryItems(LIBRARY_IDS.anime, {
-                        limit: 30,
-                        sortBy: "CommunityRating",
-                        sortOrder: "Descending",
-                    }),
+                // trending anime isn't a direct TMDB endpoint, we use discover
+                const [pop, trend] = await Promise.all([
+                    tmdb.getAnime(1),
+                    tmdb.getAnime(2),
                 ]);
-                let allItems = isKids ? filterForKids(all.Items) : all.Items;
-                let topItems = isKids ? filterForKids(top.Items) : top.Items;
-                allItems = filterAdultContent(allItems, allowAdult);
-                topItems = filterAdultContent(topItems, allowAdult);
-                setItems(allItems.slice(0, 50));
-                setTopRated(topItems.slice(0, 20));
+                setPopular(pop);
+                setTrending(trend);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -49,13 +30,13 @@ export default function AnimePage() {
             }
         };
         fetch();
-    }, [isReady, isKids]);
+    }, []);
 
-    if (loading || !isReady) {
+    if (loading) {
         return (
             <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-12">
                 <div className="h-8 w-48 skeleton rounded-lg mb-8" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {Array.from({ length: 18 }).map((_, i) => (
                         <div key={i} className="aspect-[2/3] skeleton rounded-xl" />
                     ))}
@@ -71,28 +52,26 @@ export default function AnimePage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="px-4 sm:px-6 lg:px-12 mb-8 sm:mb-10"
             >
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-1 sm:mb-2 font-heading">
-                    {cfg.browse.animePageTitle}
+                <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 font-heading uppercase tracking-tighter">
+                    ANİME
                 </h1>
-                <p className="text-sm sm:text-base" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    {cfg.browse.animePageSubtitle}
+                <p className="text-sm sm:text-base text-white/40 max-w-2xl">
+                    En yeni Japon animasyonlarını keşfet. Aksiyon, macera, dram ve daha fazlası en yüksek kalitede burada.
                 </p>
             </motion.div>
 
-            <ContentRow title={cfg.browse.topRatedAnimeTitle} items={topRated} variant="vertical" />
-
+            <ContentRow title="Trend Animeler" items={trending} variant="vertical" />
+            
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="mt-10 sm:mt-12 px-4 sm:px-6 lg:px-12"
+                className="mt-12 px-4 sm:px-6 lg:px-12"
             >
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-4 sm:mb-6 font-heading">
-                    {cfg.browse.allAnimeTitle}
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
-                    {items.map((item, i) => (
-                        <ContentCard key={item.Id} item={item} index={i} variant="vertical" />
+                <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Tüm Animeler</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+                    {popular.map((item, i) => (
+                        <ContentCard key={item.id} item={item} index={i} variant="vertical" />
                     ))}
                 </div>
             </motion.div>

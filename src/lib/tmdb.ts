@@ -97,6 +97,16 @@ class TMDBService {
         return data.results.map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
     }
 
+    async getAnime(page = 1): Promise<MediaItem[]> {
+        const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/discover/tv`, {
+            with_genres: "16", // Animation
+            with_original_language: "ja", // Japanese
+            page: String(page),
+            sort_by: "popularity.desc",
+        });
+        return data.results.map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
+    }
+
     async getDetails(id: string, type: "movie" | "tv"): Promise<any> {
         return this.fetch(`/${type}/${id}`, {
             append_to_response: "videos,credits,similar,recommendations",

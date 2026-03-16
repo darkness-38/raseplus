@@ -1,47 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { jellyfin, JellyfinItem, LIBRARY_IDS } from "@/lib/jellyfin";
+import { tmdb } from "@/lib/tmdb";
 import { useStore } from "@/store/useStore";
-import { filterForKids, filterAdultContent } from "@/lib/profiles";
 import ContentRow from "@/components/ContentRow";
 import ContentCard from "@/components/ContentCard";
 import { motion } from "framer-motion";
-import { useSiteConfig } from "@/lib/siteConfig";
+import { MediaItem } from "@/types/media";
 
 export default function SeriesPage() {
-    const isReady = useStore((s) => s.isJellyfinReady);
-    const activeProfile = useStore((s) => s.activeProfile);
-    const isKids = activeProfile?.isKids ?? false;
-    const allowAdult = activeProfile?.allowAdultContent ?? false;
-
-    const [items, setItems] = useState<JellyfinItem[]>([]);
-    const [topRated, setTopRated] = useState<JellyfinItem[]>([]);
+    const [popular, setPopular] = useState<MediaItem[]>([]);
+    const [topRated, setTopRated] = useState<MediaItem[]>([]);
+    const [onTheAir, setOnTheAir] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const { config: cfg } = useSiteConfig();
 
     useEffect(() => {
-        if (!isReady) return;
         const fetch = async () => {
             try {
-                const [all, top] = await Promise.all([
-                    jellyfin.getLibraryItems(LIBRARY_IDS.series, {
-                        limit: 60,
-                        sortBy: "DateCreated",
-                        sortOrder: "Descending",
-                    }),
-                    jellyfin.getLibraryItems(LIBRARY_IDS.series, {
-                        limit: 30,
-                        sortBy: "CommunityRating",
-                        sortOrder: "Descending",
-                    }),
+                const [pop, top, air] = await Promise.all([
+                    tmdb.getTVShows("popular"),
+                    tmdb.getTVShows("top_rated"),
+                    tmdb.getTVShows("on_the_air"),
                 ]);
-                let allItems = isKids ? filterForKids(all.Items) : all.Items;
-                let topItems = isKids ? filterForKids(top.Items) : top.Items;
-                allItems = filterAdultContent(allItems, allowAdult);
-                topItems = filterAdultContent(topItems, allowAdult);
-                setItems(allItems.slice(0, 50));
-                setTopRated(topItems.slice(0, 20));
+                setPopular(pop);
+                setTopRated(top);
+                setOnTheAir(air);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -49,13 +32,13 @@ export default function SeriesPage() {
             }
         };
         fetch();
-    }, [isReady, isKids]);
+    }, []);
 
-    if (loading || !isReady) {
+    if (loading) {
         return (
             <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-12">
                 <div className="h-8 w-48 skeleton rounded-lg mb-8" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="aspect-[16/9] skeleton rounded-xl" />
                     ))}
@@ -71,31 +54,33 @@ export default function SeriesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="px-4 sm:px-6 lg:px-12 mb-8 sm:mb-10"
             >
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-1 sm:mb-2 font-heading">
-                    {cfg.browse.seriesPageTitle}
+                <h1 className="text-3xl sm:text-5xl font-black text-white mb-2 font-heading uppercase tracking-tighter">
+                    DİZİLER
                 </h1>
-                <p className="text-sm sm:text-base" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    {cfg.browse.seriesPageSubtitle}
+                <p className="text-sm sm:text-base text-white/40 max-w-2xl">
+                    En çok izlenen ve yeni çıkan dizileri keşfet. Tüm sezonları yerel ve global kaynaklardan takip et.
                 </p>
             </motion.div>
 
-            <ContentRow title={cfg.browse.topRatedSeriesTitle} items={topRated} variant="horizontal" />
-
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="mt-10 sm:mt-12 px-4 sm:px-6 lg:px-12"
-            >
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 font-heading">
-                    {cfg.browse.allSeriesTitle}
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
-                    {items.map((item, i) => (
-                        <ContentCard key={item.Id} item={item} index={i} variant="horizontal" />
-                    ))}
-                </div>
-            </motion.div>
+            <ContentRow title="En Çok Oy Alan Diziler" items={topRated} variant="horizontal" />
+            
+            <div className="mt-10 space-y-12">
+                <ContentRow title="Yayında Olanlar" items={onTheAir} variant="horizontal" />
+                
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="px-4 sm:px-6 lg:px-12"
+                >
+                    <h2 className="text-xl font-black text-white mb-6 font-heading uppercase">Popüler Diziler</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                        {popular.map((item, i) => (
+                            <ContentCard key={item.id} item={item} index={i} variant="horizontal" />
+                        ))}
+                    </div>
+                </motion.div>
+            </div>
         </div>
     );
 }

@@ -121,7 +121,7 @@ export default function ItemDetailPage({ params }: PageProps) {
     const handlePlay = () => {
         if (!item) return;
         openPlayer({
-            itemId: source === "local" ? item.id : localItem?.Id,
+            itemId: source === "jellyfin" ? item.id : localItem?.Id,
             tmdbId: item.tmdbId || item.id,
             title: item.title,
             type: item.type as "movie" | "tv",
