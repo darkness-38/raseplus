@@ -17,7 +17,7 @@ const SourceIcon = () => (
     </svg>
 );
 
-type SourceType = "superembed" | "autoembed" | "2embed" | "vidmoly" | "rapidrame";
+type SourceType = "superembed" | "autoembed" | "2embed" | "rapidrame" | "close";
 
 export default function VideoPlayer() {
     const { 
@@ -34,24 +34,27 @@ export default function VideoPlayer() {
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [isCam, setIsCam] = useState(false);
 
+    const [imdbId, setImdbId] = useState<string | null>(null);
+
     useEffect(() => {
         const checkCamStatus = async () => {
-            if (playerType === "movie" && playerTmdbId) {
+            if (playerTmdbId) {
                 try {
-                    const details = await tmdb.getDetails(playerTmdbId, "movie");
-                    if (details?.status === "Released" && details?.release_date) {
-                        const releaseDate = new Date(details.release_date);
-                        const today = new Date();
-                        const diffTime = Math.abs(today.getTime() - releaseDate.getTime());
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        
-                        // If it came out in the last 60 days, it's highly likely a CAM.
-                        if (diffDays <= 60) {
-                            setIsCam(true);
-                        }
+                    const details = await tmdb.getDetails(playerTmdbId, playerType);
+                    
+                    // Save IMDB ID for HDF APIs
+                    if (details?.imdb_id) {
+                        setImdbId(details.imdb_id);
+                    }
+
+                    // Check for CAM version (movies released in 2026)
+                    if (playerType === "movie" && details?.release_date?.startsWith("2026")) {
+                        setIsCam(true);
+                    } else {
+                        setIsCam(false);
                     }
                 } catch (e) {
-                    console.error("Failed to fetch details for CAM check", e);
+                    console.error("Failed to fetch details for HDF API check", e);
                 }
             }
         };
@@ -60,14 +63,10 @@ export default function VideoPlayer() {
 
     const getEmbedUrl = () => {
         switch (activeSource) {
-            case "vidmoly":
-                return playerType === "movie"
-                    ? `https://vidmoly.to/embed/${playerTmdbId}`
-                    : `https://vidmoly.to/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
             case "rapidrame":
-                return playerType === "movie"
-                    ? `https://www.2embed.cc/embedTR/${playerTmdbId}`
-                    : `https://www.2embed.cc/embedtvTR/${playerTmdbId}&s=${playerSeason}&e=${playerEpisode}`;
+                return `https://hdfapi.com/player.php?m=${imdbId || playerTmdbId}`;
+            case "close":
+                return `https://player.hdfapi.com/video/${imdbId || playerTmdbId}`;
 
             case "superembed":
                 return playerType === "movie"
@@ -118,7 +117,7 @@ export default function VideoPlayer() {
                     src={embedUrl}
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
-                    allow="autoplay; fullscreen; picture-in-picture"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerPolicy="origin"
                     sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
                     loading="lazy"
@@ -186,18 +185,18 @@ export default function VideoPlayer() {
                                     Source 3 (Fallback)
                                 </button>
                                 <button 
-                                    onClick={() => setActiveSource("vidmoly")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "vidmoly" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 4 {isCam && "(CAM Sürüm)"}
-                                </button>
-                                <button 
                                     onClick={() => setActiveSource("rapidrame")}
                                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "rapidrame" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     <SourceIcon />
-                                    Source 5 {isCam && "(CAM Sürüm)"}
+                                    Rapidrame (Dublaj) {isCam && playerType === "movie" && "(CAM Sürüm)"}
+                                </button>
+                                <button 
+                                    onClick={() => setActiveSource("close")}
+                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "close" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <SourceIcon />
+                                    Close (Dublaj) {isCam && playerType === "movie" && "(CAM Sürüm)"}
                                 </button>
 
                             </div>
