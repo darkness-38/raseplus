@@ -28,10 +28,12 @@ export default function ItemLayout({
         if (!isClient) return;
         if (!loading && !user) {
             router.push("/login");
-        } else if (!loading && user && !activeProfile) {
+        } else if (!loading && user && !activeProfile && !isPlayerOpen) {
+            // Only redirect to profiles if player is NOT open.
+            // Some iframe ads try to wipe localStorage, causing rogue redirects.
             router.push("/profiles");
         }
-    }, [user, loading, router, activeProfile, isClient]);
+    }, [user, loading, router, activeProfile, isClient, isPlayerOpen]);
 
     if (loading || !user) {
         return (
