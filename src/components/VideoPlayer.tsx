@@ -118,10 +118,10 @@ export default function VideoPlayer() {
                     key={embedUrl}
                     src={embedUrl}
                     className="w-full h-full border-0 relative z-50 bg-black"
-                    allowFullScreen
+                    allowFullScreen={true}
                     // @ts-ignore
-                    webkitAllowFullScreen
-                    mozAllowFullScreen
+                    webkitallowfullscreen="true"
+                    mozallowfullscreen="true"
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
                     referrerPolicy="origin"
                     loading="lazy"
@@ -134,7 +134,7 @@ export default function VideoPlayer() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="absolute top-0 left-0 right-0 p-4 sm:p-8 flex flex-col sm:flex-row items-center justify-between z-20 pointer-events-none gap-4"
+                            className="absolute top-0 left-0 right-0 p-4 sm:p-8 flex flex-col sm:flex-row items-center justify-between z-[200] pointer-events-none gap-4"
                             style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)" }}
                         >
                             <div className="flex items-center w-full sm:w-auto">
@@ -202,7 +202,7 @@ export default function VideoPlayer() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 flex flex-col items-center justify-end z-[60] pointer-events-none gap-4"
+                            className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 flex flex-col items-center justify-end z-[200] pointer-events-none gap-4"
                             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)" }}
                         >
                             {/* Source Selection Marquee */}
