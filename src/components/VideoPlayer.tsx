@@ -13,6 +13,18 @@ const BackIcon = () => (
     </svg>
 );
 
+const FullscreenIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+    </svg>
+);
+
+const FullscreenExitIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75v4.5m0 0H4.5M9 8.25L3.75 3.75M9 15.75v4.5m0-4.5H4.5M9 15.75l-5.25 5.25M15 3.75v4.5m0 0h4.5m-4.5-4.5l5.25 5.25M15 15.75v4.5m0-4.5h4.5m-4.5 0l5.25-5.25" />
+    </svg>
+);
+
 // SourceIcon removed
 
 // DownloadIcon removed
@@ -33,7 +45,9 @@ export default function VideoPlayer() {
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const playerContainerRef = useRef<HTMLDivElement>(null);
     const [isCam, setIsCam] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const [imdbId, setImdbId] = useState<string | null>(null);
 
@@ -74,13 +88,35 @@ export default function VideoPlayer() {
         checkCamStatus();
     }, [playerTmdbId, playerType, user, activeProfile, playerTitle, playerSeason, playerEpisode]);
 
-    const getEmbedUrl = () => {
+    const getEmbedUrl = useCallback(() => {
         return playerType === "movie"
             ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
             : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
-    };
+    }, [playerType, playerTmdbId, playerSeason, playerEpisode]);
 
     const embedUrl = getEmbedUrl();
+
+    const toggleFullscreen = useCallback(() => {
+        if (!playerContainerRef.current) return;
+
+        if (!document.fullscreenElement) {
+            playerContainerRef.current.requestFullscreen().catch((err) => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+            setIsFullscreen(true);
+        } else {
+            document.exitFullscreen();
+            setIsFullscreen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    }, []);
 
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
@@ -106,6 +142,7 @@ export default function VideoPlayer() {
             className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-0 sm:p-4"
             onMouseMove={showControls}
             onTouchStart={showControls}
+            ref={playerContainerRef}
         >
             <div className="relative w-full h-full max-w-[1920px] rounded-0 sm:rounded-xl overflow-hidden shadow-2xl bg-black/90">
                 <iframe
@@ -145,6 +182,13 @@ export default function VideoPlayer() {
                                     )}
                                 </div>
                             </div>
+
+                            <button
+                                onClick={toggleFullscreen}
+                                className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all pointer-events-auto group flex-shrink-0"
+                            >
+                                {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
