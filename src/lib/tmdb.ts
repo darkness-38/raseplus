@@ -139,9 +139,26 @@ class TMDBService {
             page: String(page),
             include_adult: (!isKids && allowAdultContent) ? "true" : "false",
         });
-        return data.results
-            .filter(item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0)
-            .map(item => this.mapToMediaItem(item));
+
+        let results = data.results.filter(
+            item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0
+        );
+
+        if (isKids) {
+            // Only allow safe genres for kids
+            const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
+            // Animation, Family, Kids, Comedy, Adventure, Fantasy, Music, Sci-Fi
+            results = results.filter(item =>
+                item.genre_ids?.some(id => KIDS_GENRES.has(id)) ?? false
+            );
+        } else if (!allowAdultContent) {
+            // Block Horror genre (27) from results
+            results = results.filter(item =>
+                !item.genre_ids?.includes(27)
+            );
+        }
+
+        return results.map(item => this.mapToMediaItem(item));
     }
 
     async getMovies(
