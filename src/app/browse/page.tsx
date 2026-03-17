@@ -5,6 +5,7 @@ import { tmdb } from "@/lib/tmdb";
 import { useStore } from "@/store/useStore";
 import HeroBanner from "@/components/HeroBanner";
 import ContentRow from "@/components/ContentRow";
+import ContinueWatching from "@/components/ContinueWatching";
 import { useSiteConfig } from "@/lib/siteConfig";
 import { MediaItem } from "@/types/media";
 
@@ -74,6 +75,7 @@ export default function BrowsePage() {
         <div className="min-h-screen">
             <HeroBanner items={heroItems} />
             <div className="relative z-10 -mt-20 space-y-10 pb-20">
+                <ContinueWatching />
                 <ContentRow title="Trending Today" items={trendingDaily} variant="horizontal" />
                 <ContentRow title="Top Watched This Week" items={trendingWeekly} variant="vertical" />
                 <ContentRow title="🎌 Popular Anime" items={animeItems} variant="horizontal" />

@@ -2,7 +2,9 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useStore } from "@/store/useStore";
+import { useAuth } from "@/context/AuthContext";
 import { tmdb } from "@/lib/tmdb";
+import { saveContinueWatching } from "@/lib/profiles";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BackIcon = () => (
@@ -26,6 +28,8 @@ export default function VideoPlayer() {
         playerEpisode,
         closePlayer, 
     } = useStore();
+    const { user } = useAuth();
+    const activeProfile = useStore((s) => s.activeProfile);
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -50,13 +54,25 @@ export default function VideoPlayer() {
                     } else {
                         setIsCam(false);
                     }
+
+                    // Save to Continue Watching
+                    if (user && activeProfile) {
+                        saveContinueWatching(user.uid, activeProfile.id, {
+                            id: playerTmdbId,
+                            title: playerTitle,
+                            type: playerType === "movie" ? "movie" : "tv",
+                            posterPath: details.poster_path,
+                            season: playerSeason,
+                            episode: playerEpisode,
+                        });
+                    }
                 } catch (e) {
                     console.error("Failed to fetch details for HDF API check", e);
                 }
             }
         };
         checkCamStatus();
-    }, [playerTmdbId, playerType]);
+    }, [playerTmdbId, playerType, user, activeProfile, playerTitle, playerSeason, playerEpisode]);
 
     const getEmbedUrl = () => {
         return playerType === "movie"

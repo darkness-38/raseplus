@@ -107,6 +107,16 @@ export async function deleteProfile(
     await remove(profileRef(uid, profileId));
 }
 
+export interface ContinueWatchingItem {
+    id: string; // TMDB ID
+    title: string;
+    type: "movie" | "tv";
+    posterPath: string;
+    season?: number;
+    episode?: number;
+    updatedAt: number;
+}
+
 /**
  * Filter items for Kids profile.
  */
@@ -134,4 +144,33 @@ export function filterAdultContent<T extends { OfficialRating?: string }>(
         if (!item.OfficialRating) return true;
         return !ADULT_RATINGS.includes(item.OfficialRating);
     });
+}
+
+function continueWatchingRef(uid: string, profileId: string) {
+    return ref(db, `users/${uid}/profiles/${profileId}/continueWatching`);
+}
+
+export async function saveContinueWatching(
+    uid: string,
+    profileId: string,
+    item: Omit<ContinueWatchingItem, "updatedAt">
+): Promise<void> {
+    const itemRef = ref(db, `users/${uid}/profiles/${profileId}/continueWatching/${item.id}`);
+    await set(itemRef, {
+        ...item,
+        updatedAt: Date.now(),
+    });
+}
+
+export async function getContinueWatching(
+    uid: string,
+    profileId: string
+): Promise<ContinueWatchingItem[]> {
+    const snapshot = await get(continueWatchingRef(uid, profileId));
+    if (!snapshot.exists()) return [];
+
+    const data = snapshot.val() as Record<string, ContinueWatchingItem>;
+    return Object.values(data)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, 20); // Limit to top 20
 }
