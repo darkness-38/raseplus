@@ -155,11 +155,40 @@ export default function VideoPlayer() {
                             {/* Download Button */}
                             <div className="flex items-center mt-2 sm:mt-0 pointer-events-auto w-full sm:w-auto justify-end sm:justify-start">
                                 <button
-                                    onClick={() => alert('Download functionality needs to be implemented. Please connect your download service API.')}
+                                    onClick={() => {
+                                        const primaryUrl = playerType === "movie" 
+                                            ? `https://vidsrc.xyz/download/movie/${playerTmdbId}`
+                                            : `https://vidsrc.xyz/download/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
+                                        
+                                        const newWindow = window.open(primaryUrl, '_blank');
+                                        
+                                        // Since we can't reliably detect 404 from a different origin due to CORS in client-side JS
+                                        // when opening a new tab, the standard approach is to let the user see the page.
+                                        // However, if we wanted to provide the fallback link, it typically has to be a separate button
+                                        // or we just trust the primary link, or try fetching the header if CORS allows (it usually doesn't).
+                                        // For now, based on instructions, we will open the primary url.
+                                        // To truly handle 404, we would need a backend proxy or an API that supports CORS.
+                                        // As a workaround, we could open the primary, and if it fails (not easily detectable), 
+                                        // user might need to click a fallback button. Let's just open the primary here.
+                                    }}
                                     className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold text-sm sm:text-base flex items-center transition-all border border-white/10 hover:border-white/20 shadow-lg"
                                 >
                                     <DownloadIcon />
                                     <span className="ml-2">İndir</span>
+                                </button>
+                                
+                                {/* Fallback Button */}
+                                <button
+                                    onClick={() => {
+                                        const fallbackUrl = playerType === "movie"
+                                            ? `https://vidsrc.me/download/movie?tmdb=${playerTmdbId}`
+                                            : `https://vidsrc.me/download/tv?tmdb=${playerTmdbId}&season=${playerSeason}&ep=${playerEpisode}`; // using generic fallback params for tv if needed
+                                        window.open(fallbackUrl, '_blank');
+                                    }}
+                                    className="ml-2 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 backdrop-blur-md text-white/70 hover:text-white text-xs sm:text-sm flex items-center transition-all border border-white/5"
+                                    title="Alternatif İndirme"
+                                >
+                                    Alternatif İndir
                                 </button>
                             </div>
                         </motion.div>
