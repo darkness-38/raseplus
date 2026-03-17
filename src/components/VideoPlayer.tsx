@@ -11,19 +11,11 @@ const BackIcon = () => (
     </svg>
 );
 
-const SourceIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="mr-2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Z" />
-    </svg>
-);
+// SourceIcon removed
 
-const DownloadIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-    </svg>
-);
+// DownloadIcon removed
 
-type SourceType = "superembed" | "autoembed" | "2embed";
+// SourceType removed
 
 export default function VideoPlayer() {
     const { 
@@ -36,7 +28,6 @@ export default function VideoPlayer() {
     } = useStore();
     
     const [isControlsVisible, setIsControlsVisible] = useState(true);
-    const [activeSource, setActiveSource] = useState<SourceType>("superembed");
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [isCam, setIsCam] = useState(false);
 
@@ -68,22 +59,9 @@ export default function VideoPlayer() {
     }, [playerTmdbId, playerType]);
 
     const getEmbedUrl = () => {
-        switch (activeSource) {
-            case "superembed":
-                return playerType === "movie"
-                    ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
-                    : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
-            case "autoembed":
-                return playerType === "movie"
-                    ? `https://player.autoembed.cc/embed/movie/${playerTmdbId}`
-                    : `https://player.autoembed.cc/embed/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
-            case "2embed":
-                return playerType === "movie"
-                    ? `https://www.2embed.cc/embed/${playerTmdbId}`
-                    : `https://www.2embed.cc/embedtv/${playerTmdbId}&s=${playerSeason}&e=${playerEpisode}`;
-            default:
-                return "";
-        }
+        return playerType === "movie"
+            ? `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1`
+            : `https://multiembed.mov/?video_id=${playerTmdbId}&tmdb=1&s=${playerSeason}&e=${playerEpisode}`;
     };
 
     const embedUrl = getEmbedUrl();
@@ -151,46 +129,6 @@ export default function VideoPlayer() {
                                     )}
                                 </div>
                             </div>
-                            
-                            {/* Download Button */}
-                            <div className="flex items-center mt-2 sm:mt-0 pointer-events-auto w-full sm:w-auto justify-end sm:justify-start">
-                                <button
-                                    onClick={() => {
-                                        const primaryUrl = playerType === "movie" 
-                                            ? `https://vidsrc.xyz/download/movie/${playerTmdbId}`
-                                            : `https://vidsrc.xyz/download/tv/${playerTmdbId}/${playerSeason}/${playerEpisode}`;
-                                        
-                                        const newWindow = window.open(primaryUrl, '_blank');
-                                        
-                                        // Since we can't reliably detect 404 from a different origin due to CORS in client-side JS
-                                        // when opening a new tab, the standard approach is to let the user see the page.
-                                        // However, if we wanted to provide the fallback link, it typically has to be a separate button
-                                        // or we just trust the primary link, or try fetching the header if CORS allows (it usually doesn't).
-                                        // For now, based on instructions, we will open the primary url.
-                                        // To truly handle 404, we would need a backend proxy or an API that supports CORS.
-                                        // As a workaround, we could open the primary, and if it fails (not easily detectable), 
-                                        // user might need to click a fallback button. Let's just open the primary here.
-                                    }}
-                                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold text-sm sm:text-base flex items-center transition-all border border-white/10 hover:border-white/20 shadow-lg"
-                                >
-                                    <DownloadIcon />
-                                    <span className="ml-2">İndir</span>
-                                </button>
-                                
-                                {/* Fallback Button */}
-                                <button
-                                    onClick={() => {
-                                        const fallbackUrl = playerType === "movie"
-                                            ? `https://vidsrc.me/download/movie?tmdb=${playerTmdbId}`
-                                            : `https://vidsrc.me/download/tv?tmdb=${playerTmdbId}&season=${playerSeason}&ep=${playerEpisode}`; // using generic fallback params for tv if needed
-                                        window.open(fallbackUrl, '_blank');
-                                    }}
-                                    className="ml-2 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 backdrop-blur-md text-white/70 hover:text-white text-xs sm:text-sm flex items-center transition-all border border-white/5"
-                                    title="Alternatif İndirme"
-                                >
-                                    Alternatif İndir
-                                </button>
-                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -205,34 +143,9 @@ export default function VideoPlayer() {
                             className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 flex flex-col items-center justify-end z-[200] pointer-events-none gap-4"
                             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)" }}
                         >
-                            {/* Source Selection Marquee */}
-                            <div className="flex flex-wrap justify-center gap-2 pointer-events-auto bg-black/40 p-2 rounded-2xl backdrop-blur-md border border-white/5">
-                                <button 
-                                    onClick={() => setActiveSource("superembed")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "superembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 1 (Most Stable)
-                                </button>
-                                <button 
-                                    onClick={() => setActiveSource("autoembed")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "autoembed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 2 (Fallback)
-                                </button>
-                                <button 
-                                    onClick={() => setActiveSource("2embed")}
-                                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center ${activeSource === "2embed" ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <SourceIcon />
-                                    Source 3 (Fallback)
-                                </button>
-                            </div>
-
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
-                                If the stream doesn't load or buffers, please try the different sources above.
-                                {playerType === "tv" && " If watching Anime, click the CC icon on Source 1 to select subtitles."}
+                                You can choose different servers from the button on the top left.
+                                {playerType === "tv" && " If watching Anime, click the CC icon to select subtitles."}
                             </p>
                         </motion.div>
                     )}
