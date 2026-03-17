@@ -9,6 +9,10 @@ import { motion } from "framer-motion";
 import { MediaItem } from "@/types/media";
 
 export default function SeriesPage() {
+    const activeProfile = useStore((s) => s.activeProfile);
+    const isKids = activeProfile?.isKids ?? false;
+    const allowAdultContent = activeProfile?.allowAdultContent ?? false;
+
     const [popular, setPopular] = useState<MediaItem[]>([]);
     const [topRated, setTopRated] = useState<MediaItem[]>([]);
     const [onTheAir, setOnTheAir] = useState<MediaItem[]>([]);
@@ -17,10 +21,11 @@ export default function SeriesPage() {
     useEffect(() => {
         const fetch = async () => {
             try {
+                const options = { isKids, allowAdultContent };
                 const [pop, top, air] = await Promise.all([
-                    tmdb.getTVShows("popular"),
-                    tmdb.getTVShows("top_rated"),
-                    tmdb.getTVShows("on_the_air"),
+                    tmdb.getTVShows("popular", 1, options),
+                    tmdb.getTVShows("top_rated", 1, options),
+                    tmdb.getTVShows("on_the_air", 1, options),
                 ]);
                 setPopular(pop);
                 setTopRated(top);
@@ -32,7 +37,7 @@ export default function SeriesPage() {
             }
         };
         fetch();
-    }, []);
+    }, [isKids, allowAdultContent]);
 
     if (loading) {
         return (

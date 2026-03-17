@@ -9,6 +9,10 @@ import { motion } from "framer-motion";
 import { MediaItem } from "@/types/media";
 
 export default function MoviesPage() {
+    const activeProfile = useStore((s) => s.activeProfile);
+    const isKids = activeProfile?.isKids ?? false;
+    const allowAdultContent = activeProfile?.allowAdultContent ?? false;
+
     const [popular, setPopular] = useState<MediaItem[]>([]);
     const [topRated, setTopRated] = useState<MediaItem[]>([]);
     const [upcoming, setUpcoming] = useState<MediaItem[]>([]);
@@ -17,10 +21,11 @@ export default function MoviesPage() {
     useEffect(() => {
         const fetch = async () => {
             try {
+                const options = { isKids, allowAdultContent };
                 const [pop, top, up] = await Promise.all([
-                    tmdb.getMovies("popular"),
-                    tmdb.getMovies("top_rated"),
-                    tmdb.getMovies("upcoming"),
+                    tmdb.getMovies("popular", 1, options),
+                    tmdb.getMovies("top_rated", 1, options),
+                    tmdb.getMovies("upcoming", 1, options),
                 ]);
                 setPopular(pop);
                 setTopRated(top);
@@ -32,7 +37,7 @@ export default function MoviesPage() {
             }
         };
         fetch();
-    }, []);
+    }, [isKids, allowAdultContent]);
 
     if (loading) {
         return (

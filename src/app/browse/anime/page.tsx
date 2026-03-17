@@ -9,6 +9,10 @@ import { motion } from "framer-motion";
 import { MediaItem } from "@/types/media";
 
 export default function AnimePage() {
+    const activeProfile = useStore((s) => s.activeProfile);
+    const isKids = activeProfile?.isKids ?? false;
+    const allowAdultContent = activeProfile?.allowAdultContent ?? false;
+
     const [popular, setPopular] = useState<MediaItem[]>([]);
     const [trending, setTrending] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,10 +20,11 @@ export default function AnimePage() {
     useEffect(() => {
         const fetch = async () => {
             try {
+                const options = { isKids, allowAdultContent };
                 // trending anime isn't a direct TMDB endpoint, we use discover
                 const [pop, trend] = await Promise.all([
-                    tmdb.getAnime(1),
-                    tmdb.getAnime(2),
+                    tmdb.getAnime(1, options),
+                    tmdb.getAnime(2, options),
                 ]);
                 setPopular(pop);
                 setTrending(trend);
@@ -30,7 +35,7 @@ export default function AnimePage() {
             }
         };
         fetch();
-    }, []);
+    }, [isKids, allowAdultContent]);
 
     if (loading) {
         return (

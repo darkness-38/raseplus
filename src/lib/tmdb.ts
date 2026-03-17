@@ -110,7 +110,18 @@ class TMDBService {
         };
     }
 
-    async getTrending(type: "all" | "movie" | "tv" = "all", timeWindow: "day" | "week" = "day"): Promise<MediaItem[]> {
+    async getTrending(
+        type: "all" | "movie" | "tv" = "all",
+        timeWindow: "day" | "week" = "day",
+        options?: { isKids?: boolean; allowAdultContent?: boolean }
+    ): Promise<MediaItem[]> {
+        const { isKids = false, allowAdultContent = false } = options || {};
+
+        if (isKids || !allowAdultContent) {
+            // We cannot use /trending with certification filters, must use /discover
+            return this.getDiscoverContent({ type, isKids, allowAdultContent, sortBy: "popularity.desc" });
+        }
+
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/trending/${type}/${timeWindow}`);
         return data.results
             .filter(item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0)
@@ -127,7 +138,17 @@ class TMDBService {
             .map(item => this.mapToMediaItem(item));
     }
 
-    async getMovies(type: "popular" | "top_rated" | "upcoming" | "now_playing" = "popular", page = 1): Promise<MediaItem[]> {
+    async getMovies(
+        type: "popular" | "top_rated" | "upcoming" | "now_playing" = "popular",
+        page = 1,
+        options?: { isKids?: boolean; allowAdultContent?: boolean }
+    ): Promise<MediaItem[]> {
+        const { isKids = false, allowAdultContent = false } = options || {};
+
+        if (isKids || !allowAdultContent) {
+            return this.getDiscoverContent({ type: "movie", isKids, allowAdultContent, page, sortBy: type === "top_rated" ? "vote_average.desc" : "popularity.desc" });
+        }
+
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/movie/${type}`, {
             page: String(page),
         });
@@ -136,7 +157,17 @@ class TMDBService {
             .map(m => this.mapToMediaItem({ ...m, media_type: "movie" }));
     }
 
-    async getTVShows(type: "popular" | "top_rated" | "on_the_air" = "popular", page = 1): Promise<MediaItem[]> {
+    async getTVShows(
+        type: "popular" | "top_rated" | "on_the_air" = "popular",
+        page = 1,
+        options?: { isKids?: boolean; allowAdultContent?: boolean }
+    ): Promise<MediaItem[]> {
+        const { isKids = false, allowAdultContent = false } = options || {};
+
+        if (isKids || !allowAdultContent) {
+            return this.getDiscoverContent({ type: "tv", isKids, allowAdultContent, page, sortBy: type === "top_rated" ? "vote_average.desc" : "popularity.desc" });
+        }
+
         const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/tv/${type}`, {
             page: String(page),
         });
@@ -145,13 +176,94 @@ class TMDBService {
             .map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));
     }
 
-    async getAnime(page = 1): Promise<MediaItem[]> {
-        const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/discover/tv`, {
+    private async getDiscoverContent({
+        type,
+        isKids,
+        allowAdultContent,
+        page = 1,
+        sortBy = "popularity.desc",
+    }: {
+        type: "all" | "movie" | "tv";
+        isKids: boolean;
+        allowAdultContent: boolean;
+        page?: number;
+        sortBy?: string;
+    }): Promise<MediaItem[]> {
+        const results: MediaItem[] = [];
+
+        const fetchType = async (mediaType: "movie" | "tv") => {
+            const params: Record<string, string> = {
+                page: String(page),
+                sort_by: sortBy,
+                include_adult: (!isKids && allowAdultContent) ? "true" : "false",
+                watch_region: "US", // Important for accurate certifications
+                with_original_language: "en",
+            };
+
+            if (isKids) {
+                params.certification_country = "US";
+                if (mediaType === "movie") {
+                    params["certification.lte"] = "PG";
+                    params.with_genres = "10751,16"; // Family, Animation
+                } else {
+                    params["certification.lte"] = "TV-PG"; // or TV-Y7
+                    params.with_genres = "10762,16"; // Kids, Animation
+                }
+            } else if (!allowAdultContent) {
+                params.certification_country = "US";
+                if (mediaType === "movie") {
+                    params["certification.lte"] = "PG-13"; // Block R, NC-17
+                } else {
+                    params["certification.lte"] = "TV-14"; // Block TV-MA
+                }
+            }
+
+            const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/discover/${mediaType}`, params);
+            return data.results
+                .filter(item => item.poster_path && item.vote_average > 0)
+                .map(item => this.mapToMediaItem({ ...item, media_type: mediaType }));
+        };
+
+        if (type === "all") {
+            const [movies, tv] = await Promise.all([fetchType("movie"), fetchType("tv")]);
+            // Interleave results roughly
+            const maxLen = Math.max(movies.length, tv.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (movies[i]) results.push(movies[i]);
+                if (tv[i]) results.push(tv[i]);
+            }
+        } else {
+            results.push(...(await fetchType(type)));
+        }
+
+        return results;
+    }
+
+    async getAnime(
+        page = 1,
+        options?: { isKids?: boolean; allowAdultContent?: boolean }
+    ): Promise<MediaItem[]> {
+        const { isKids = false, allowAdultContent = false } = options || {};
+
+        const params: Record<string, string> = {
             with_genres: "16", // Animation
             with_original_language: "ja", // Japanese
             page: String(page),
             sort_by: "popularity.desc",
-        });
+            include_adult: (!isKids && allowAdultContent) ? "true" : "false",
+        };
+
+        if (isKids) {
+            params.certification_country = "US";
+            params["certification.lte"] = "TV-PG";
+            // Also enforce Kids genre alongside animation if strictly kids
+            params.with_genres = "16,10762"; 
+        } else if (!allowAdultContent) {
+            params.certification_country = "US";
+            params["certification.lte"] = "TV-14";
+        }
+
+        const data = await this.fetch<TMDBResponse<TMDBMovie>>(`/discover/tv`, params);
         return data.results
             .filter(item => item.poster_path && item.vote_average > 4)
             .map(s => this.mapToMediaItem({ ...s, media_type: "tv" }));

@@ -15,6 +15,20 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            // Allow cross-origin iframes (e.g. multiembed.mov) to trigger fullscreen
+            key: "Permissions-Policy",
+            value: "fullscreen=*, autoplay=*, picture-in-picture=*, encrypted-media=*",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

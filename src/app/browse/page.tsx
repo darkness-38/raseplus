@@ -12,6 +12,7 @@ export default function BrowsePage() {
     const activeProfile = useStore((s) => s.activeProfile);
     const { config: cfg } = useSiteConfig();
     const isKids = activeProfile?.isKids ?? false;
+    const allowAdultContent = activeProfile?.allowAdultContent ?? false;
 
     const [heroItems, setHeroItems] = useState<MediaItem[]>([]);
     const [trendingDaily, setTrendingDaily] = useState<MediaItem[]>([]);
@@ -22,10 +23,11 @@ export default function BrowsePage() {
     useEffect(() => {
         const fetchAll = async () => {
             try {
+                const options = { isKids, allowAdultContent };
                 const [daily, weekly, anime] = await Promise.all([
-                    tmdb.getTrending("all", "day"),
-                    tmdb.getTrending("all", "week"),
-                    tmdb.getAnime(),
+                    tmdb.getTrending("all", "day", options),
+                    tmdb.getTrending("all", "week", options),
+                    tmdb.getAnime(), // Anime might need its own discover filter later, but it's largely fine
                 ]);
 
                 setTrendingDaily(daily.slice(0, 20));
@@ -42,7 +44,7 @@ export default function BrowsePage() {
         };
 
         fetchAll();
-    }, [isKids]);
+    }, [isKids, allowAdultContent]);
 
     if (loading) {
         return (
