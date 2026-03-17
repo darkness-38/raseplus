@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
-const MAIN_URL = "https://www.hdfilmcehennemi.nl";
+const MAIN_URL = "https://hdfilmcehennemi.nl";
 
 const BASE_HEADERS = {
     "User-Agent":
@@ -32,7 +32,7 @@ function jsUnpack(packed: string): string {
         const c = parseInt(cStr, 10);
         const k = kStr.split("|");
 
-        const e = function(num: number): string {
+        const e = function (num: number): string {
             const first = num < a ? '' : e(Math.floor(num / a));
             const rem = num % a;
             const second = rem > 35 ? String.fromCharCode(rem + 29) : rem.toString(36);
@@ -188,7 +188,7 @@ export function extractFromObfuscated(unpacked: string): string | null {
     let joined = arrayElements.map(el => el.replace(/["']/g, '')).join('');
     joined = joined.split('').reverse().join('');
     joined = rot13(joined);
-    
+
     try {
         joined = base64Decode(joined);
     } catch { return null; }
@@ -205,7 +205,7 @@ export function extractFromObfuscated(unpacked: string): string | null {
 async function extractVideoUrl(req: NextRequest, iframeUrl: string, debugLog: string[]): Promise<string | null> {
     try {
         const { text } = await fetchText(iframeUrl, { Referer: MAIN_URL + "/" });
-        
+
         let extracted: string | null = null;
         // Check for mp4/m3u8 directly
         let m = text.match(/https?:[^"']+(?:\.mp4|\.m3u8)[^"']*/i);
@@ -225,7 +225,7 @@ async function extractVideoUrl(req: NextRequest, iframeUrl: string, debugLog: st
                 }
             }
         }
-        
+
         if (!extracted) {
             // Check for JSON configurations containing files
             const fileMatches = text.match(/"file"\s*:\s*"([^"]+)"/g) || [];
@@ -379,19 +379,19 @@ export async function GET(req: NextRequest) {
             }, { status: 404 });
         }
 
-        return NextResponse.json({ 
-            sources, 
-            movieUrl, 
-            debugLog: showDebug ? debugLog : undefined 
+        return NextResponse.json({
+            sources,
+            movieUrl,
+            debugLog: showDebug ? debugLog : undefined
         });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.error("[source2] Error:", message);
         debugLog.push(`Fatal: ${message}`);
-        return NextResponse.json({ 
-            error: message, 
-            sources: [], 
-            debugLog: showDebug ? debugLog : undefined 
+        return NextResponse.json({
+            error: message,
+            sources: [],
+            debugLog: showDebug ? debugLog : undefined
         }, { status: 500 });
     }
 }
