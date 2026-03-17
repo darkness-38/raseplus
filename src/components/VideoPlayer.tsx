@@ -113,9 +113,11 @@ export default function VideoPlayer() {
                     src={embedUrl}
                     className="w-full h-full border-0 relative z-50 bg-black"
                     allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                    // @ts-ignore
+                    webkitAllowFullScreen
+                    mozAllowFullScreen
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
                     referrerPolicy="origin"
-                    sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
                     loading="lazy"
                 />
                 

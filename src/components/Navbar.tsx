@@ -113,20 +113,11 @@ export default function Navbar() {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowUserMenu(!showUserMenu)}
-                                    className="w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all overflow-hidden"
+                                    className="w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all overflow-hidden border-2 border-white/10 hover:border-[#0DD6E8] hover:shadow-[0_0_20px_rgba(13,214,232,0.3)]"
                                     style={{
                                         backgroundColor: activeProfile?.isKids
                                             ? "rgba(13,214,232,0.15)"
                                             : "rgba(255,255,255,0.08)",
-                                        border: "2px solid rgba(255,255,255,0.1)",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = "#0DD6E8";
-                                        e.currentTarget.style.boxShadow = "0 0 20px rgba(13,214,232,0.3)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                                        e.currentTarget.style.boxShadow = "none";
                                     }}
                                 >
                                     {activeProfile ? (

@@ -35,14 +35,9 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
                 : "w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]"
                 }`}
         >
-            {/* Image Container */}
             <div
-                className={`relative rounded-xl overflow-hidden card-shine transition-all duration-300 ${isHorizontal ? "aspect-[16/9]" : "aspect-[2/3]"
+                className={`relative rounded-xl overflow-hidden card-shine transition-all duration-300 border border-white/5 group-hover:border-[#0DD6E8]/40 group-hover:shadow-[0_0_30px_rgba(13,214,232,0.15)] ${isHorizontal ? "aspect-[16/9]" : "aspect-[2/3]"
                     }`}
-                style={{
-                    border: isHovered ? "1px solid rgba(13,214,232,0.4)" : "1px solid rgba(255,255,255,0.05)",
-                    boxShadow: isHovered ? "0 0 30px rgba(13,214,232,0.15)" : "none",
-                }}
             >
                 {!imageError && displayImageUrl ? (
                     <div className="relative w-full h-full">
@@ -110,8 +105,8 @@ export default function ContentCard({ item, index = 0, variant = "vertical" }: C
 
             {/* Title */}
             <div className="mt-2.5 px-0.5">
-                <p className={`font-medium text-white truncate transition-colors ${isHorizontal ? "text-sm sm:text-base" : "text-xs sm:text-sm"
-                    }`} style={{ color: isHovered ? "#0DD6E8" : "white" }}>
+                <p className={`font-medium text-white truncate transition-colors group-hover:text-[#0DD6E8] ${isHorizontal ? "text-sm sm:text-base" : "text-xs sm:text-sm"
+                    }`}>
                     {item.title}
                 </p>
                 <p className="text-[10px] sm:text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>

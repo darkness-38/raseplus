@@ -141,7 +141,7 @@ function PosterMarquee({ posters, direction = "left", speed = 30 }: { posters: s
         transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
       >
         {doubled.map((poster, i) => (
-          <div key={i} className="flex-shrink-0 w-[180px] h-[267px] rounded-xl overflow-hidden">
+          <div key={i} className="flex-shrink-0 w-[140px] h-[207px] sm:w-[180px] sm:h-[267px] rounded-xl overflow-hidden shadow-lg border border-white/5">
             <img src={poster} alt="" className="w-full h-full object-cover" loading="lazy" />
           </div>
         ))}
@@ -211,9 +211,8 @@ export default function LandingPage() {
     >
       {/* ═══════════════════════ NAVBAR ═══════════════════════ */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 lg:px-10 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 lg:px-10 transition-all duration-300 h-16 sm:h-20"
         style={{
-          height: 72,
           backgroundColor: scrolled ? "rgba(0,6,26,0.85)" : "transparent",
           backdropFilter: scrolled ? "blur(20px)" : "none",
           WebkitBackdropFilter: scrolled ? "blur(20px)" : "none",
@@ -307,7 +306,7 @@ export default function LandingPage() {
         </div>
 
         {/* Hero Content */}
-        <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="relative z-10 flex flex-col items-center text-center px-6 max-w-[750px]">
+        <motion.div style={{ opacity: heroOpacity, scale: heroScale }} className="relative z-10 flex flex-col items-center text-center px-6 w-full max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -358,7 +357,7 @@ export default function LandingPage() {
           initial={{ opacity: 0, rotate: -93 }}
           animate={{ opacity: 1, rotate: 14 }}
           transition={{ type: "spring", bounce: 0.2, delay: 0.25, duration: 1.5 }}
-          className="absolute bottom-[-30%] left-1/2 -translate-x-1/2 w-[99%] max-w-[1247px] aspect-square pointer-events-none"
+          className="absolute -bottom-[20%] sm:bottom-[-30%] left-1/2 -translate-x-1/2 w-[120%] sm:w-[99%] max-w-[1247px] aspect-square pointer-events-none"
         >
           <div className="absolute inset-0 rounded-full border border-white/[0.06]" />
           <div className="absolute inset-[3%] rounded-full border border-white/[0.04]" />
@@ -393,13 +392,7 @@ export default function LandingPage() {
               <motion.div
                 key={b.name}
                 whileHover={{ scale: 1.05, borderColor: "rgba(255,255,255,0.15)" }}
-                className="flex items-center justify-center rounded-2xl overflow-hidden transition-all"
-                style={{
-                  width: 148,
-                  height: 80,
-                  border: `1px solid ${COLORS.white10}`,
-                  backgroundColor: COLORS.white05,
-                }}
+                className="flex items-center justify-center rounded-2xl overflow-hidden transition-all w-[120px] h-[64px] sm:w-36 sm:h-20 border border-white/10 bg-white/5"
               >
                 <img src={b.logo} alt={b.name} className="h-8 w-auto object-contain opacity-70" loading="lazy" />
               </motion.div>
@@ -692,16 +685,14 @@ export default function LandingPage() {
 
         {/* iPad perspective wrapper */}
         <div
-          className="relative mx-auto max-w-[1100px]"
+          className="relative mx-auto w-full max-w-6xl px-4 sm:px-6"
           style={{
             perspective: "1200px",
           }}
         >
           <div
-            className="rounded-3xl overflow-hidden p-6"
+            className="rounded-3xl overflow-hidden p-4 sm:p-6 border border-white/10 bg-white/5"
             style={{
-              border: `1px solid rgba(255,255,255,0.08)`,
-              backgroundColor: "rgba(255,255,255,0.02)",
               transform: "rotateX(4deg)",
               transformOrigin: "center bottom",
             }}
