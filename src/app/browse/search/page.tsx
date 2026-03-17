@@ -25,6 +25,13 @@ export default function SearchPage() {
     const inputRef = useRef<HTMLInputElement>(null);
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Clear results when profile changes
+    useEffect(() => {
+        setQuery("");
+        setResults([]);
+        setHasSearched(false);
+    }, [isKids, allowAdultContent]);
+
     // Auto-focus on mount
     useEffect(() => {
         setTimeout(() => inputRef.current?.focus(), 300);
