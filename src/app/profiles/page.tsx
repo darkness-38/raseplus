@@ -169,23 +169,11 @@ export default function ProfilesPage() {
 
                         {/* Avatar Circle */}
                         <div
-                            className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full flex items-center justify-center transition-all duration-300 relative overflow-hidden"
+                            className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full flex items-center justify-center transition-all duration-300 relative overflow-hidden border-2 border-white/10 hover:border-[#0DD6E8] hover:shadow-[0_0_40px_rgba(13,214,232,0.25)] hover:scale-105 shadow-xl bg-black/40"
                             style={{
                                 background: profile.isKids
                                     ? "linear-gradient(135deg, rgba(13,214,232,0.15) 0%, rgba(13,214,232,0.05) 100%)"
                                     : "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
-                                border: "3px solid rgba(255,255,255,0.08)",
-                                boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "#0DD6E8";
-                                e.currentTarget.style.boxShadow = "0 0 40px rgba(13,214,232,0.25), 0 4px 24px rgba(0,0,0,0.3)";
-                                e.currentTarget.style.transform = "scale(1.05)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-                                e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.3)";
-                                e.currentTarget.style.transform = "scale(1)";
                             }}
                         >
                             <Image
@@ -225,29 +213,13 @@ export default function ProfilesPage() {
                         onClick={handleAddProfile}
                     >
                         <div
-                            className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full flex items-center justify-center transition-all duration-300"
-                            style={{
-                                border: "3px dashed rgba(255,255,255,0.1)",
-                                background: "rgba(255,255,255,0.02)",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(13,214,232,0.4)";
-                                e.currentTarget.style.boxShadow = "0 0 40px rgba(13,214,232,0.1)";
-                                e.currentTarget.style.background = "rgba(13,214,232,0.04)";
-                                e.currentTarget.style.transform = "scale(1.05)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                                e.currentTarget.style.boxShadow = "none";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                                e.currentTarget.style.transform = "scale(1)";
-                            }}
+                            className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full flex items-center justify-center transition-all duration-300 border-3 border-dashed border-white/10 bg-white/5 hover:border-[#0DD6E8]/40 hover:bg-[#0DD6E8]/5 hover:shadow-[0_0_40px_rgba(13,214,232,0.1)] hover:scale-105"
                         >
                             <svg className="w-9 h-9 sm:w-11 sm:h-11 transition-colors group-hover:stroke-[#0DD6E8]" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" strokeWidth={1.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
                         </div>
-                        <span className="text-sm sm:text-base font-semibold tracking-wide transition-colors group-hover:text-white/50" style={{ color: "rgba(255,255,255,0.25)" }}>
+                        <span className="text-sm sm:text-base font-semibold tracking-wide transition-colors group-hover:text-white" style={{ color: "rgba(255,255,255,0.25)" }}>
                             Add Profile
                         </span>
                     </motion.div>

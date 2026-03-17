@@ -17,6 +17,12 @@ const SourceIcon = () => (
     </svg>
 );
 
+const DownloadIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-white">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
+
 type SourceType = "superembed" | "autoembed" | "2embed";
 
 export default function VideoPlayer() {
@@ -144,6 +150,17 @@ export default function VideoPlayer() {
                                         <p className="text-white/70 text-sm font-medium">Season {playerSeason}, Episode {playerEpisode}</p>
                                     )}
                                 </div>
+                            </div>
+                            
+                            {/* Download Button */}
+                            <div className="flex items-center mt-2 sm:mt-0 pointer-events-auto w-full sm:w-auto justify-end sm:justify-start">
+                                <button
+                                    onClick={() => alert('Download functionality needs to be implemented. Please connect your download service API.')}
+                                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold text-sm sm:text-base flex items-center transition-all border border-white/10 hover:border-white/20 shadow-lg"
+                                >
+                                    <DownloadIcon />
+                                    <span className="ml-2">İndir</span>
+                                </button>
                             </div>
                         </motion.div>
                     )}
