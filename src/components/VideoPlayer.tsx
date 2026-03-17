@@ -114,9 +114,32 @@ export default function VideoPlayer() {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if active element is an input
+            if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+
+            if (e.key.toLowerCase() === "f") {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.key === " " || e.code === "Space") {
+                e.preventDefault();
+                // Focusing the iframe to allow its internal shortcuts (like Space to pause/play) to work
+                const iframe = document.querySelector('iframe');
+                if (iframe) {
+                    iframe.focus();
+                }
+            }
+        };
+
         document.addEventListener("fullscreenchange", handleFullscreenChange);
-        return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    }, []);
+        window.addEventListener("keydown", handleKeyDown);
+        
+        return () => {
+            document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [toggleFullscreen]);
 
     const showControls = useCallback(() => {
         setIsControlsVisible(true);
