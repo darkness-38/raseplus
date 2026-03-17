@@ -124,7 +124,6 @@ export default function VideoPlayer() {
     // ── Source state ──────────────────────────────────────────────────────────
     const [activeSource, setActiveSource] = useState<SourceId>("1");
     const [external2, setExternal2] = useState<ExternalSourceState>(INITIAL_EXTERNAL);
-    const [external3, setExternal3] = useState<ExternalSourceState>(INITIAL_EXTERNAL);
 
     // ── TMDB details & continue-watching ─────────────────────────────────────
     useEffect(() => {
@@ -164,8 +163,8 @@ export default function VideoPlayer() {
     const embedUrl = getEmbedUrl();
 
     // ── Fetch external sources ────────────────────────────────────────────────
-    const fetchExternalSource = useCallback(async (sourceNum: "2" | "3") => {
-        const setter = sourceNum === "2" ? setExternal2 : setExternal3;
+    const fetchExternalSource = useCallback(async (sourceNum: "2") => {
+        const setter = setExternal2;
         const apiRoute = `/api/source${sourceNum}`;
 
         setter({ loading: true, error: null, sources: [], activeIdx: 0 });
@@ -175,6 +174,10 @@ export default function VideoPlayer() {
                 title: playerTitle,
                 type: playerType,
             });
+            if (playerType === "tv") {
+                params.append("season", String(playerSeason));
+                params.append("episode", String(playerEpisode));
+            }
             const res = await fetch(`${apiRoute}?${params.toString()}`);
             const data = await res.json();
 
@@ -194,17 +197,14 @@ export default function VideoPlayer() {
             const message = err instanceof Error ? err.message : "Network error";
             setter({ loading: false, error: message, sources: [], activeIdx: 0 });
         }
-    }, [playerTitle, playerType]);
+    }, [playerTitle, playerType, playerSeason, playerEpisode]);
 
     // Trigger fetch when switching to external sources
     useEffect(() => {
         if (activeSource === "2" && external2.sources.length === 0 && !external2.loading) {
             fetchExternalSource("2");
         }
-        if (activeSource === "3" && external3.sources.length === 0 && !external3.loading) {
-            fetchExternalSource("3");
-        }
-    }, [activeSource, external2, external3, fetchExternalSource]);
+    }, [activeSource, external2, fetchExternalSource]);
 
     // ── Fullscreen ────────────────────────────────────────────────────────────
     const toggleFullscreen = useCallback(() => {
@@ -250,14 +250,13 @@ export default function VideoPlayer() {
     }, [showControls]);
 
     // ── Active external state shortcuts ───────────────────────────────────────
-    const extState = activeSource === "2" ? external2 : external3;
+    const extState = external2;
     const activeExtUrl = extState.sources[extState.activeIdx]?.url || null;
 
     // ── Source config ─────────────────────────────────────────────────────────
     const sources: { id: SourceId; label: string }[] = [
         { id: "1", label: "Source 1" },
         { id: "2", label: "Source 2 🇹🇷" },
-        { id: "3", label: "Source 3 🇹🇷" },
     ];
 
     return (
@@ -288,14 +287,14 @@ export default function VideoPlayer() {
                     />
                 )}
 
-                {(activeSource === "2" || activeSource === "3") && (
+                {activeSource === "2" && (
                     <div className="w-full h-full flex items-center justify-center bg-black relative z-50">
                         {extState.loading && (
                             <div className="flex flex-col items-center gap-4 text-white">
                                 {/* Spinner */}
                                 <div className="w-14 h-14 border-4 border-white/20 border-t-white rounded-full animate-spin" />
                                 <p className="text-white/70 text-sm">
-                                    {activeSource === "2" ? "FullHDFilmizlesene" : "HDFilmCehennemi"} kaynak aranıyor...
+                                    Searching for HDFilmCehennemi source...
                                 </p>
                             </div>
                         )}
@@ -304,18 +303,33 @@ export default function VideoPlayer() {
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-red-400">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                 </svg>
-                                <p className="text-red-300 font-semibold">Kaynak bulunamadı</p>
+                                <p className="text-red-300 font-semibold">No source found</p>
                                 <p className="text-white/50 text-sm">{extState.error}</p>
                                 <button
-                                    onClick={() => fetchExternalSource(activeSource as "2" | "3")}
+                                    onClick={() => fetchExternalSource("2")}
                                     className="mt-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm transition-all pointer-events-auto"
                                 >
-                                    Tekrar Dene
+                                    Try Again
                                 </button>
                             </div>
                         )}
                         {!extState.loading && !extState.error && activeExtUrl && (
-                            <HlsVideoPlayer url={activeExtUrl} />
+                            (activeExtUrl.includes(".m3u8") || activeExtUrl.includes(".mp4") || activeExtUrl.includes("/api/proxy")) ? (
+                                <HlsVideoPlayer url={activeExtUrl} />
+                            ) : (
+                                <iframe
+                                    key={activeExtUrl}
+                                    src={activeExtUrl}
+                                    className="w-full h-full border-0 relative z-50 bg-black"
+                                    allowFullScreen
+                                    // @ts-ignore
+                                    webkitallowfullscreen="true"
+                                    mozallowfullscreen="true"
+                                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
+                                    referrerPolicy="origin"
+                                    loading="lazy"
+                                />
+                            )
                         )}
                         {/* Sub-source picker (when multiple links available) */}
                         {!extState.loading && !extState.error && extState.sources.length > 1 && (
@@ -324,8 +338,7 @@ export default function VideoPlayer() {
                                     <button
                                         key={idx}
                                         onClick={() => {
-                                            const setter = activeSource === "2" ? setExternal2 : setExternal3;
-                                            setter(prev => ({ ...prev, activeIdx: idx }));
+                                            setExternal2(prev => ({ ...prev, activeIdx: idx }));
                                         }}
                                         className={`px-3 py-1 rounded-full text-xs font-medium transition-all pointer-events-auto ${
                                             extState.activeIdx === idx
@@ -407,8 +420,8 @@ export default function VideoPlayer() {
                         >
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
                                 {activeSource === "1"
-                                    ? "Switch between Source 1, Source 2 🇹🇷, or Source 3 🇹🇷 from the top bar. Turkish-dubbed streams load automatically."
-                                    : "Source 2 & 3 provide Turkish-dubbed streams from Turkish sites."}
+                                    ? "Switch between Source 1 or Source 2 🇹🇷 from the top bar. Turkish-dubbed streams load automatically."
+                                    : "Source 2 provides Turkish-dubbed streams from Turkish sites."}
                                 {playerType === "tv" && " If watching Anime, click the CC icon for subtitles."}
                             </p>
                         </motion.div>
