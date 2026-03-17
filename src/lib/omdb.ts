@@ -60,16 +60,24 @@ class OMDBService {
             const data = await this.fetch<OMDBResponse>(params);
             
             if (data.Response === "False") {
+                if (data.Error === "Request limit reached!" || data.Error === "Daily request limit reached!") {
+                    throw new Error("OMDB_LIMIT_REACHED");
+                }
                 // If not found with year, try without year
                 if (year) {
                     const fallbackData = await this.fetch<OMDBResponse>({ t: title });
+                    if (fallbackData.Response === "False" && 
+                        (fallbackData.Error === "Request limit reached!" || fallbackData.Error === "Daily request limit reached!")) {
+                        throw new Error("OMDB_LIMIT_REACHED");
+                    }
                     return fallbackData.Rated || "N/A";
                 }
                 return "N/A";
             }
 
             return data.Rated || "N/A";
-        } catch (error) {
+        } catch (error: any) {
+            if (error.message === "OMDB_LIMIT_REACHED") throw error;
             console.error("OMDb fetch error:", error);
             return "N/A";
         }

@@ -1,6 +1,7 @@
 import { MediaItem, MediaType } from "@/types/media";
 import { omdb } from "./omdb";
 import { KIDS_ALLOWED_RATINGS, ADULT_RATINGS } from "./profiles";
+import blocklist from "./blocklist.json";
 
 const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || "";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -157,28 +158,52 @@ class TMDBService {
                 results.map(async (item) => {
                     const title = item.title || item.name || "";
                     const year = item.release_date || item.first_air_date || "";
-                    const rating = await omdb.getRating(title, year);
+                    
+                    try {
+                        const rating = await omdb.getRating(title, year);
 
-                    if (isKids) {
-                        // Strict Kids Filter
-                        if (!KIDS_ALLOWED_RATINGS.includes(rating)) {
-                            // Check if it has at least one safe genre
-                            const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
-                            const genreIds = item.genre_ids || [];
-                            const adultLeaningGenres = [27, 53, 80, 10749, 10752];
-                            
-                            const hasSafeGenre = genreIds.some(id => KIDS_GENRES.has(id));
-                            const hasAdultGenre = genreIds.some(id => adultLeaningGenres.includes(id));
-                            
-                            // If OMDb says it's not kid-safe, and TMDB genres are risky, hide it
-                            if (rating === "R" || rating === "TV-MA" || rating === "NC-17" || hasAdultGenre || !hasSafeGenre) {
+                        if (isKids) {
+                            // Strict Kids Filter
+                            if (!KIDS_ALLOWED_RATINGS.includes(rating)) {
+                                const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
+                                const genreIds = item.genre_ids || [];
+                                const adultLeaningGenres = [27, 53, 80, 10749, 10752];
+                                
+                                const hasSafeGenre = genreIds.some(id => KIDS_GENRES.has(id));
+                                const hasAdultGenre = genreIds.some(id => adultLeaningGenres.includes(id));
+                                
+                                if (rating === "R" || rating === "TV-MA" || rating === "NC-17" || hasAdultGenre || !hasSafeGenre) {
+                                    return null;
+                                }
+                            }
+                        } else if (!allowAdultContent) {
+                            // Standard Restricted Filter
+                            if (ADULT_RATINGS.includes(rating) || rating === "R" || rating === "TV-MA") {
                                 return null;
                             }
                         }
-                    } else if (!allowAdultContent) {
-                        // Standard Restricted Filter
-                        if (ADULT_RATINGS.includes(rating) || rating === "R" || rating === "TV-MA") {
-                            return null;
+                    } catch (error: any) {
+                        // FALLBACK: OMDb failed (likely limit reached)
+                        const searchTitle = title.toLowerCase();
+                        
+                        // 1. Check local blocklist
+                        const isBlockedByTitle = blocklist.blockedTitles.some(t => t.toLowerCase() === searchTitle);
+                        const isBlockedByKeyword = blocklist.blockedKeywords.some(k => searchTitle.includes(k.toLowerCase()));
+                        
+                        if (isBlockedByTitle || isBlockedByKeyword) return null;
+
+                        // 2. Check TMDB Genres fallback
+                        const genreIds = item.genre_ids || [];
+                        if (isKids) {
+                            const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
+                            const adultLeaningGenres = [27, 53, 80, 10749, 10752];
+                            const hasSafeGenre = genreIds.some(id => KIDS_GENRES.has(id));
+                            const hasAdultGenre = genreIds.some(id => adultLeaningGenres.includes(id));
+                            if (hasAdultGenre || !hasSafeGenre) return null;
+                        } else if (!allowAdultContent) {
+                            const BLOCKED_GENRES = [27, 10749, 10767];
+                            if (genreIds.some(id => BLOCKED_GENRES.includes(id))) return null;
+                            if (genreIds.length === 0) return null; // Safety first
                         }
                     }
                     return item;
