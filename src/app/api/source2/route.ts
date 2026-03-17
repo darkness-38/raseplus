@@ -46,9 +46,8 @@ interface SCXData {
 
 const SCX_KEYS = ["atom", "advid", "advidprox", "proton", "fast", "fastly", "tr", "en"] as const;
 
-/** Labels for UI */
 const KEY_LABELS: Record<string, string> = {
-    tr: "Turkish Dub",
+    tr: "Türkçe Dublaj",
     en: "English",
     atom: "Atom",
     advid: "Advid",
@@ -64,38 +63,102 @@ export interface VideoSource {
     lang: string;
 }
 
-async function fetchHtml(url: string): Promise<string> {
-    const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-    return res.text();
+async function fetchHtml(url: string): Promise<{ html: string; status: number; finalUrl: string }> {
+    const res = await fetch(url, {
+        headers: HEADERS,
+        redirect: "follow",
+        cache: "no-store",
+    });
+    const html = await res.text();
+    return { html, status: res.status, finalUrl: res.url };
 }
 
-/** Search for the movie and return its page URL */
-async function searchMovie(title: string): Promise<string | null> {
-    const searchUrl = `${MAIN_URL}/arama/${encodeURIComponent(title)}`;
-    const html = await fetchHtml(searchUrl);
-    const $ = cheerio.load(html);
-    const firstResult = $("li.film a").first().attr("href");
-    return firstResult || null;
+/** Slugify a title the way Turkish sites typically do */
+function slugify(title: string): string {
+    return title
+        .toLowerCase()
+        .replace(/[çÇ]/g, "c")
+        .replace(/[şŞ]/g, "s")
+        .replace(/[ğĞ]/g, "g")
+        .replace(/[üÜ]/g, "u")
+        .replace(/[öÖ]/g, "o")
+        .replace(/[ıİ]/g, "i")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+}
+
+/** Search variants to try */
+function buildSearchUrls(title: string): string[] {
+    return [
+        // Raw title (space encoded as +)
+        `${MAIN_URL}/arama/${title.replace(/\s+/g, "+")}`,
+        // Raw encodeURIComponent
+        `${MAIN_URL}/arama/${encodeURIComponent(title)}`,
+        // Slugified with dashes
+        `${MAIN_URL}/arama/${slugify(title)}`,
+        // First word only
+        `${MAIN_URL}/arama/${title.split(" ")[0]}`,
+    ];
+}
+
+/** Try multiple search URL variants, return first hit */
+async function searchMovie(title: string): Promise<{ movieUrl: string; searchUrl: string; debug: string[] } | null> {
+    const urls = buildSearchUrls(title);
+    const debugLog: string[] = [];
+
+    for (const searchUrl of urls) {
+        try {
+            debugLog.push(`Trying: ${searchUrl}`);
+            const { html, status, finalUrl } = await fetchHtml(searchUrl);
+            debugLog.push(`  → status=${status}, finalUrl=${finalUrl}`);
+
+            const $ = cheerio.load(html);
+
+            // Try multiple selectors because site structure might vary
+            const selectors = [
+                "li.film a",
+                "ul.film-list li a",
+                "div.film-list a",
+                ".post-title a",
+                "article a",
+                "h2 a",
+            ];
+
+            for (const sel of selectors) {
+                const href = $(sel).first().attr("href");
+                if (href) {
+                    const fullUrl = href.startsWith("http") ? href : `${MAIN_URL}${href}`;
+                    debugLog.push(`  ✓ Found with selector "${sel}": ${fullUrl}`);
+                    return { movieUrl: fullUrl, searchUrl, debug: debugLog };
+                }
+            }
+
+            // Log a snippet of the HTML to help diagnose selector mismatches
+            const bodyText = $("body").text().slice(0, 200).replace(/\s+/g, " ").trim();
+            debugLog.push(`  ✗ No match. Body snippet: ${bodyText}`);
+        } catch (err) {
+            debugLog.push(`  ✗ Fetch error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    return null;
 }
 
 /** Extract SCX video links from a movie page */
 function extractVideoLinks(html: string): VideoSource[] {
     const $ = cheerio.load(html);
 
-    // Find the first non-empty script tag
     let scriptContent = "";
     $("script").each((_i, el) => {
         const data = $(el).html() || "";
-        if (data.includes("scx =")) {
+        if (data.includes("scx =") || data.includes("scx=")) {
             scriptContent = data.trim();
-            return false; // break
+            return false;
         }
     });
 
     if (!scriptContent) return [];
 
-    // Extract scx = {...};
     const scxMatch = scriptContent.match(/scx\s*=\s*(\{[\s\S]*?\});/);
     if (!scxMatch) return [];
 
@@ -116,7 +179,6 @@ function extractVideoLinks(html: string): VideoSource[] {
         const label = KEY_LABELS[key] || key;
 
         if (Array.isArray(t)) {
-            // Array of base64+rot13 encoded strings
             for (const encodedLink of t) {
                 if (typeof encodedLink === "string") {
                     try {
@@ -124,11 +186,10 @@ function extractVideoLinks(html: string): VideoSource[] {
                         if (url.startsWith("http")) {
                             sources.push({ label, url, lang: key === "tr" ? "tr" : key === "en" ? "en" : "other" });
                         }
-                    } catch { /* skip malformed */ }
+                    } catch { /* skip */ }
                 }
             }
         } else if (typeof t === "object" && t !== null) {
-            // Map of quality -> encoded link
             for (const [subKey, value] of Object.entries(t as Record<string, unknown>)) {
                 if (typeof value === "string") {
                     try {
@@ -152,27 +213,57 @@ function extractVideoLinks(html: string): VideoSource[] {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const title = searchParams.get("title");
+    const directUrl = searchParams.get("url"); // bypass search — pass movie page URL directly
+    const debug = searchParams.get("debug") === "1";
 
-    if (!title) {
-        return NextResponse.json({ error: "Missing title parameter" }, { status: 400 });
+    if (!title && !directUrl) {
+        return NextResponse.json({ error: "Missing title or url parameter" }, { status: 400 });
     }
 
     try {
-        // Step 1: Search for the movie
-        const movieUrl = await searchMovie(title);
-        if (!movieUrl) {
-            return NextResponse.json({ error: "No results found", sources: [] }, { status: 404 });
+        let movieUrl: string;
+        let debugInfo: string[] = [];
+
+        if (directUrl) {
+            // Direct URL mode — skip search
+            movieUrl = directUrl;
+            debugInfo.push(`Direct URL mode: ${directUrl}`);
+        } else {
+            const result = await searchMovie(title!);
+            debugInfo = result?.debug ?? [`No results for title: "${title}"`];
+
+            if (!result) {
+                console.error("[source2] Search failed:", debugInfo);
+                return NextResponse.json({
+                    error: "No results found",
+                    sources: [],
+                    ...(debug ? { debugLog: debugInfo } : {}),
+                }, { status: 404 });
+            }
+            movieUrl = result.movieUrl;
         }
 
-        // Step 2: Load movie page and extract links
-        const movieHtml = await fetchHtml(movieUrl);
+        const { html: movieHtml, status } = await fetchHtml(movieUrl);
+        debugInfo.push(`Movie page status: ${status}`);
+
         const sources = extractVideoLinks(movieHtml);
+        debugInfo.push(`Sources found: ${sources.length}`);
 
         if (sources.length === 0) {
-            return NextResponse.json({ error: "No video links found", sources: [] }, { status: 404 });
+            console.error("[source2] No video links found at:", movieUrl);
+            return NextResponse.json({
+                error: "Movie found but no video links extracted",
+                sources: [],
+                movieUrl,
+                ...(debug ? { debugLog: debugInfo } : {}),
+            }, { status: 404 });
         }
 
-        return NextResponse.json({ sources, movieUrl });
+        return NextResponse.json({
+            sources,
+            movieUrl,
+            ...(debug ? { debugLog: debugInfo } : {}),
+        });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.error("[source2] Error:", message);
