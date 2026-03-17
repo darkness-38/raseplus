@@ -370,15 +370,28 @@ export async function GET(req: NextRequest) {
                     : "Video buttons found but URL extraction failed — see debugLog for details",
                 sources: [],
                 movieUrl,
-                ...(showDebug ? { debugLog } : {}),
+                debugLog: showDebug ? debugLog : undefined,
+                statusInfo: {
+                    searchFound: !!movieUrl,
+                    buttonsFound,
+                    sourcesExtracted: sources.length
+                }
             }, { status: 404 });
         }
 
-        return NextResponse.json({ sources, movieUrl, ...(showDebug ? { debugLog } : {}) });
+        return NextResponse.json({ 
+            sources, 
+            movieUrl, 
+            debugLog: showDebug ? debugLog : undefined 
+        });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[source3] Error:", message);
+        console.error("[source2] Error:", message);
         debugLog.push(`Fatal: ${message}`);
-        return NextResponse.json({ error: message, sources: [], ...(showDebug ? { debugLog } : {}) }, { status: 500 });
+        return NextResponse.json({ 
+            error: message, 
+            sources: [], 
+            debugLog: showDebug ? debugLog : undefined 
+        }, { status: 500 });
     }
 }
