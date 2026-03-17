@@ -10,6 +10,7 @@ import { MediaItem } from "@/types/media";
 export default function SearchPage() {
     const activeProfile = useStore((s) => s.activeProfile);
     const isKids = activeProfile?.isKids ?? false;
+    const allowAdultContent = activeProfile?.allowAdultContent ?? false;
 
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<MediaItem[]>([]);
@@ -33,10 +34,10 @@ export default function SearchPage() {
     useEffect(() => {
         const fetchExplore = async () => {
             try {
-                const [trending, popularMovies, popularTV] = await Promise.all([
-                    tmdb.getTrending("all"),
-                    tmdb.getMovies("popular"),
-                    tmdb.getTVShows("popular"),
+                const options = { isKids, allowAdultContent };
+                const [popularMovies, popularTV] = await Promise.all([
+                    tmdb.getMovies("popular", 1, options),
+                    tmdb.getTVShows("popular", 1, options),
                 ]);
 
                 setSuggestedMovies(popularMovies.slice(0, 12));
@@ -48,7 +49,7 @@ export default function SearchPage() {
             }
         };
         fetchExplore();
-    }, []);
+    }, [isKids, allowAdultContent]);
 
     const performSearch = useCallback(
         async (searchQuery: string) => {
@@ -61,7 +62,7 @@ export default function SearchPage() {
             setLoading(true);
             setHasSearched(true);
             try {
-                const items = await tmdb.search(searchQuery);
+                const items = await tmdb.search(searchQuery, 1, { isKids, allowAdultContent });
                 setResults(items);
             } catch (e) {
                 console.error("Search failed:", e);
@@ -70,7 +71,7 @@ export default function SearchPage() {
                 setLoading(false);
             }
         },
-        []
+        [isKids, allowAdultContent]
     );
 
     const handleInputChange = (value: string) => {

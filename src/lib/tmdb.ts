@@ -128,10 +128,16 @@ class TMDBService {
             .map(item => this.mapToMediaItem(item));
     }
 
-    async search(query: string, page = 1): Promise<MediaItem[]> {
+    async search(
+        query: string,
+        page = 1,
+        options?: { isKids?: boolean; allowAdultContent?: boolean }
+    ): Promise<MediaItem[]> {
+        const { isKids = false, allowAdultContent = false } = options || {};
         const data = await this.fetch<TMDBResponse<TMDBMovie>>("/search/multi", {
             query,
             page: String(page),
+            include_adult: (!isKids && allowAdultContent) ? "true" : "false",
         });
         return data.results
             .filter(item => (item.media_type === "movie" || item.media_type === "tv") && item.poster_path && item.vote_average > 0)
@@ -205,16 +211,19 @@ class TMDBService {
                 if (mediaType === "movie") {
                     params["certification.lte"] = "PG";
                     params.with_genres = "10751,16"; // Family, Animation
+                    params.without_genres = "27,53,80,18,10749"; // Block Horror, Thriller, Crime, Drama, Romance (adult-leaning)
                 } else {
-                    params["certification.lte"] = "TV-PG"; // or TV-Y7
+                    params["certification.lte"] = "TV-PG";
                     params.with_genres = "10762,16"; // Kids, Animation
+                    params.without_genres = "27,80,9648,10763"; // Block Horror, Crime, Mystery, News
                 }
             } else if (!allowAdultContent) {
+                // Only apply certification-based filter for adult-disabled profiles
                 params.certification_country = "US";
                 if (mediaType === "movie") {
-                    params["certification.lte"] = "PG-13"; // Block R, NC-17
+                    params["certification.lte"] = "PG-13";
                 } else {
-                    params["certification.lte"] = "TV-14"; // Block TV-MA
+                    params["certification.lte"] = "TV-14";
                 }
             }
 
