@@ -1,4 +1,6 @@
 import { MediaItem, MediaType } from "@/types/media";
+import { omdb } from "./omdb";
+import { KIDS_ALLOWED_RATINGS, ADULT_RATINGS } from "./profiles";
 
 const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || "";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -146,32 +148,43 @@ class TMDBService {
             item => (item.media_type === "movie" || item.media_type === "tv") && 
                    item.poster_path && 
                    item.vote_average > 0 &&
-                   !item.adult // Double check the adult flag from TMDB
+                   !item.adult
         );
 
-        if (isKids) {
-            // Very strict whitelist for kids
-            const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
-            // Animation (16), Family (10751), Kids (10762), Comedy (35), Adventure (12), Fantasy (14), Music (10402), Sci-Fi (878)
-            results = results.filter(item => {
-                const genreIds = item.genre_ids || [];
-                if (genreIds.length === 0) return false; // Hide if no genre info
-                
-                // Must have at least one safe genre AND NOT have any adult-leaning genres
-                // (some items are dual tagged Animation + Horror, e.g. Resident Evil Degeneration)
-                const adultLeaningGenres = [27, 53, 80, 10749, 10752]; // Horror, Thriller, Crime, Romance, War
-                return genreIds.some(id => KIDS_GENRES.has(id)) && 
-                       !genreIds.some(id => adultLeaningGenres.includes(id));
-            });
-        } else if (!allowAdultContent) {
-            // Moderate blocklist for non-adult profiles
-            const BLOCKED_GENRES = [27, 10749, 10767]; // Horror (27), Romance (10749) - often adult, Talk (10767)
-            results = results.filter(item => {
-                const genreIds = item.genre_ids || [];
-                // If the item has NO genres, it's unpredictable; we hide it for non-adult profiles if it's from search
-                if (genreIds.length === 0) return false;
-                return !genreIds.some(id => BLOCKED_GENRES.includes(id));
-            });
+        // Perform OMDb validation if restrictions are active
+        if (isKids || !allowAdultContent) {
+            const validatedResults = await Promise.all(
+                results.map(async (item) => {
+                    const title = item.title || item.name || "";
+                    const year = item.release_date || item.first_air_date || "";
+                    const rating = await omdb.getRating(title, year);
+
+                    if (isKids) {
+                        // Strict Kids Filter
+                        if (!KIDS_ALLOWED_RATINGS.includes(rating)) {
+                            // Check if it has at least one safe genre
+                            const KIDS_GENRES = new Set([16, 10751, 10762, 35, 12, 14, 10402, 878]);
+                            const genreIds = item.genre_ids || [];
+                            const adultLeaningGenres = [27, 53, 80, 10749, 10752];
+                            
+                            const hasSafeGenre = genreIds.some(id => KIDS_GENRES.has(id));
+                            const hasAdultGenre = genreIds.some(id => adultLeaningGenres.includes(id));
+                            
+                            // If OMDb says it's not kid-safe, and TMDB genres are risky, hide it
+                            if (rating === "R" || rating === "TV-MA" || rating === "NC-17" || hasAdultGenre || !hasSafeGenre) {
+                                return null;
+                            }
+                        }
+                    } else if (!allowAdultContent) {
+                        // Standard Restricted Filter
+                        if (ADULT_RATINGS.includes(rating) || rating === "R" || rating === "TV-MA") {
+                            return null;
+                        }
+                    }
+                    return item;
+                })
+            );
+            results = validatedResults.filter((item): item is TMDBMovie => item !== null);
         }
 
         return results.map(item => this.mapToMediaItem(item));
