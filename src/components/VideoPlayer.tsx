@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { useAuth } from "@/context/AuthContext";
 import { tmdb } from "@/lib/tmdb";
@@ -40,6 +41,7 @@ export default function VideoPlayer() {
         playerEpisode,
         closePlayer, 
     } = useStore();
+    const router = useRouter();
     const { user } = useAuth();
     const activeProfile = useStore((s) => s.activeProfile);
     
@@ -193,7 +195,10 @@ export default function VideoPlayer() {
                         >
                             <div className="flex items-center w-full sm:w-auto">
                                 <button
-                                    onClick={closePlayer}
+                                    onClick={() => {
+                                        closePlayer();
+                                        router.push("/browse");
+                                    }}
                                     className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all pointer-events-auto group flex-shrink-0"
                                 >
                                     <BackIcon />

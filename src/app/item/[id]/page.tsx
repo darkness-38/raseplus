@@ -95,24 +95,24 @@ export default function ItemDetailPage({ params, searchParams }: PageProps) {
 
     const handlePlay = () => {
         if (!item) return;
-        openPlayer({
-            tmdbId: item.id,
+        const params = new URLSearchParams({
+            type: item.type as string,
             title: item.title,
-            type: item.type as "movie" | "tv",
-            season: item.type === "tv" ? selectedSeason : undefined,
-            episode: item.type === "tv" ? 1 : undefined,
+            s: (item.type === "tv" ? selectedSeason : 1).toString(),
+            e: "1",
         });
+        router.push(`/watch/${item.id}?${params.toString()}`);
     };
 
     const handlePlayEpisode = (ep: any) => {
         if (!item) return;
-        openPlayer({
-            tmdbId: item.id,
-            title: `${item.title} - ${ep.name}`,
+        const params = new URLSearchParams({
             type: "tv",
-            season: selectedSeason,
-            episode: ep.episode_number,
+            title: `${item.title} - ${ep.name}`,
+            s: selectedSeason.toString(),
+            e: ep.episode_number.toString(),
         });
+        router.push(`/watch/${item.id}?${params.toString()}`);
     };
 
     if (loading || !item) {

@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { useAuth } from "@/context/AuthContext";
 import { getContinueWatching, ContinueWatchingItem } from "@/lib/profiles";
@@ -16,7 +17,7 @@ export default function ContinueWatching() {
 
     const { user } = useAuth();
     const activeProfile = useStore((s) => s.activeProfile);
-    const openPlayer = useStore((s) => s.openPlayer);
+    const router = useRouter();
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -105,13 +106,15 @@ export default function ContinueWatching() {
                     {items.map((item, i) => (
                         <div
                             key={item.id}
-                            onClick={() => openPlayer({
-                                tmdbId: item.id,
-                                title: item.title,
-                                type: item.type,
-                                season: item.season,
-                                episode: item.episode
-                            })}
+                            onClick={() => {
+                                const params = new URLSearchParams({
+                                    type: item.type,
+                                    title: item.title,
+                                    s: item.season?.toString() || "1",
+                                    e: item.episode?.toString() || "1",
+                                });
+                                router.push(`/watch/${item.id}?${params.toString()}`);
+                            }}
                             className="group relative flex-shrink-0 cursor-pointer snap-start transition-all duration-300 w-[240px] sm:w-[280px] md:w-[320px] lg:w-[360px]"
                         >
                             <div className="relative rounded-xl overflow-hidden aspect-[16/9] border border-white/5 group-hover:border-[#0DD6E8]/40 transition-all duration-300">
