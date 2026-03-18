@@ -66,9 +66,9 @@ async function getBrowser() {
                    '--disable-dev-shm-usage',
                    '--disable-gpu',
                 ],
-                defaultViewport: chromium.defaultViewport,
+                defaultViewport: (chromium as any).defaultViewport,
                 executablePath: executablePath,
-                headless: chromium.headless,
+                headless: (chromium as any).headless,
             });
         } else {
             console.log(`[Scraper] Launching Local Chrome at ${CHROME_PATH}`);
