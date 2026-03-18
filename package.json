@@ -9,19 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^143.0.4",
-    "@sparticuz/chromium-min": "^143.0.4",
     "@vercel/speed-insights": "^2.0.0",
     "cheerio": "^1.2.0",
     "firebase": "^12.9.0",
     "framer-motion": "^12.34.2",
     "hls.js": "^1.6.15",
-    "is-plain-object": "^5.0.0",
     "jsdom": "^29.0.0",
     "next": "16.1.6",
-    "puppeteer-core": "^24.39.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zustand": "^5.0.11"
@@ -33,7 +27,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "puppeteer": "^24.39.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -7,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import { tmdb } from "@/lib/tmdb";
 import { saveContinueWatching } from "@/lib/profiles";
 import { motion, AnimatePresence } from "framer-motion";
-import Hls from "hls.js";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -28,76 +27,6 @@ const FullscreenExitIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75v4.5m0 0H4.5M9 8.25L3.75 3.75M9 15.75v4.5m0-4.5H4.5M9 15.75l-5.25 5.25M15 3.75v4.5m0 0h4.5m-4.5-4.5l5.25 5.25M15 15.75v4.5m0-4.5h4.5m-4.5 0l5.25-5.25" />
     </svg>
 );
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type SourceId = "1" | "2" | "3";
-
-interface ExternalVideoSource {
-    label: string;
-    url: string;
-    lang: string;
-}
-
-interface ExternalSourceState {
-    loading: boolean;
-    error: string | null;
-    sources: ExternalVideoSource[];
-    activeIdx: number;
-}
-
-const INITIAL_EXTERNAL: ExternalSourceState = {
-    loading: false,
-    error: null,
-    sources: [],
-    activeIdx: 0,
-};
-
-// ─── HLS Video Player ─────────────────────────────────────────────────────────
-
-function HlsVideoPlayer({ url, referer }: { url: string; referer?: string }) {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    void referer;
-
-    useEffect(() => {
-        if (!videoRef.current || !url) return;
-        const video = videoRef.current;
-
-        if (url.includes(".m3u8") && Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
-                xhrSetup: (xhr) => {
-                    // Some servers need a referer — best effort
-                    xhr.setRequestHeader("Origin", window.location.origin);
-                },
-            });
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(() => {});
-            });
-            return () => hls.destroy();
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            // Safari native HLS
-            video.src = url;
-            video.play().catch(() => {});
-        } else {
-            // Direct MP4 or other
-            video.src = url;
-            video.play().catch(() => {});
-        }
-    }, [url]);
-
-    return (
-        <video
-            ref={videoRef}
-            className="w-full h-full bg-black"
-            controls
-            playsInline
-            autoPlay
-        />
-    );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -122,42 +51,6 @@ export default function VideoPlayer() {
     const [imdbId, setImdbId] = useState<string | null>(null);
 
     // ── Source state ──────────────────────────────────────────────────────────
-    const [activeSource, setActiveSource] = useState<SourceId>("1");
-    const [externalSource, setExternalSource] = useState<{ url: string; type: "hls" | "iframe" } | null>(null);
-    const [externalLoading, setExternalLoading] = useState(false);
-    const [externalError, setExternalError] = useState<string | null>(null);
-
-    // ── Fetch External Source ────────────────────────────────────────────────
-    const fetchExternalSource = useCallback(async (providerId: string) => {
-        if (!playerTmdbId || !playerTitle) return;
-        
-        setExternalLoading(true);
-        setExternalError(null);
-        setExternalSource(null);
-
-        try {
-            const provider = providerId === "2" ? "source2" : "source3";
-            const res = await fetch(`/api/get-source?title=${encodeURIComponent(playerTitle)}&tmdbId=${playerTmdbId}&type=${playerType}&season=${playerSeason}&episode=${playerEpisode}&provider=${provider}`);
-            
-            if (!res.ok) throw new Error("Failed to fetch source from scraper");
-            
-            const data = await res.json();
-            setExternalSource(data);
-        } catch (err: any) {
-            console.error("Scraper Error:", err);
-            setExternalError(err.message || "Failed to load source");
-        } finally {
-            setExternalLoading(false);
-        }
-    }, [playerTmdbId, playerTitle, playerType, playerSeason, playerEpisode]);
-
-    useEffect(() => {
-        if (activeSource === "2" || activeSource === "3") {
-            fetchExternalSource(activeSource);
-        }
-    }, [activeSource, fetchExternalSource]);
-
-
     // ── TMDB details & continue-watching ─────────────────────────────────────
     useEffect(() => {
         const checkCamStatus = async () => {
@@ -183,8 +76,6 @@ export default function VideoPlayer() {
         };
         checkCamStatus();
     }, [playerTmdbId, playerType, user, activeProfile, playerTitle, playerSeason, playerEpisode]);
-
-    void imdbId;
 
     // ── Embed URL (Source 1) ──────────────────────────────────────────────────
     const getEmbedUrl = useCallback(() => {
@@ -260,56 +151,18 @@ export default function VideoPlayer() {
             <div className="relative w-full h-full max-w-[1920px] rounded-0 sm:rounded-xl overflow-hidden shadow-2xl bg-black/90">
 
                 {/* ── Player area ── */}
-                {activeSource === "1" && (
-                    <iframe
-                        key={embedUrl}
-                        src={embedUrl}
-                        className="w-full h-full border-0 relative z-50 bg-black"
-                        allowFullScreen
-                        // @ts-ignore
-                        webkitallowfullscreen="true"
-                        mozallowfullscreen="true"
-                        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
-                        referrerPolicy="origin"
-                        loading="lazy"
-                    />
-                )}
-
-                {(activeSource === "2" || activeSource === "3") && (
-                    <div className="w-full h-full relative z-50 bg-black flex items-center justify-center">
-                        {externalLoading && (
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-                                <p className="text-white/70 text-sm font-medium">Scraping source... Please wait</p>
-                            </div>
-                        )}
-                        
-                        {externalError && (
-                            <div className="flex flex-col items-center gap-4 p-6 text-center">
-                                <p className="text-red-400 font-medium">{externalError}</p>
-                                <button 
-                                    onClick={() => fetchExternalSource(activeSource)}
-                                    className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-sm transition-all"
-                                >
-                                    Retry
-                                </button>
-                            </div>
-                        )}
-
-                        {!externalLoading && !externalError && externalSource && (
-                            externalSource.type === "hls" ? (
-                                <HlsVideoPlayer url={externalSource.url} />
-                            ) : (
-                                <iframe
-                                    src={externalSource.url}
-                                    className="w-full h-full border-0"
-                                    allowFullScreen
-                                    allow="autoplay; fullscreen; encrypted-media"
-                                />
-                            )
-                        )}
-                    </div>
-                )}
+                <iframe
+                    key={embedUrl}
+                    src={embedUrl}
+                    className="w-full h-full border-0 relative z-50 bg-black"
+                    allowFullScreen
+                    // @ts-ignore
+                    webkitallowfullscreen="true"
+                    mozallowfullscreen="true"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
+                    referrerPolicy="origin"
+                    loading="lazy"
+                />
 
 
                 {/* ── Header Controls ── */}
@@ -338,23 +191,6 @@ export default function VideoPlayer() {
                             </div>
 
                             <div className="flex items-center gap-3 pointer-events-auto">
-                                {/* ── Source Switcher ── */}
-                                <div className="flex items-center bg-black/40 backdrop-blur-md rounded-full p-1 gap-1 border border-white/10">
-                                    {sources.map((src) => (
-                                        <button
-                                            key={src.id}
-                                            onClick={() => setActiveSource(src.id)}
-                                            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                                                activeSource === src.id
-                                                    ? "bg-white text-black shadow-md"
-                                                    : "text-white/70 hover:text-white hover:bg-white/10"
-                                            }`}
-                                        >
-                                            {src.label}
-                                        </button>
-                                    ))}
-                                </div>
-
                                 <button
                                     onClick={toggleFullscreen}
                                     className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all group flex-shrink-0"
@@ -377,9 +213,7 @@ export default function VideoPlayer() {
                             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)" }}
                         >
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
-                                {activeSource === "1"
-                                    ? "Switch between Sources from the top bar."
-                                    : "Source loaded."}
+                                Video controls available on hover.
                                 {playerType === "tv" && " If watching Anime, click the CC icon for subtitles."}
                             </p>
                         </motion.div>
