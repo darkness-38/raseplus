@@ -71,21 +71,42 @@ async function scrapeSource2(title: string) {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
 
         const searchUrl = `https://www.fullhdfilmizlesene.live/arama/${slugify(title)}`;
-        console.log(`[Scraper] S2: ${searchUrl}`);
+        console.log(`[Scraper] S2 Search: ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         
-        const isOnMoviePage = await page.evaluate(() => !!document.querySelector('#plx, .video-play-button'));
-        let movieUrl = isOnMoviePage ? page.url() : await page.evaluate(() => {
-            const span = document.querySelector('span.t');
-            const link = span?.closest('a') || document.querySelector('a.tt');
-            return link ? (link as HTMLAnchorElement).href : null;
-        });
+        const pageTitle = await page.title();
+        console.log(`[Scraper] S2 Page Title: ${pageTitle}`);
 
-        if (!movieUrl) return null;
-        if (!isOnMoviePage) await page.goto(movieUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        const isOnMoviePage = await page.evaluate(() => !!document.querySelector('#plx, .video-play-button'));
+        let movieUrl = isOnMoviePage ? page.url() : null;
+
+        if (!movieUrl) {
+            await page.waitForSelector('a', { timeout: 10000 }).catch(() => {});
+            movieUrl = await page.evaluate((t) => {
+                // Try specific selectors first
+                const span = document.querySelector('span.t');
+                const specific = span?.closest('a') || document.querySelector('a.tt') || document.querySelector('.film-box a');
+                if (specific) return (specific as HTMLAnchorElement).href;
+
+                // Fallback: look for any link containing the title (fuzzy match)
+                const links = Array.from(document.querySelectorAll('a'));
+                const match = links.find(a => a.textContent?.toLowerCase().includes(t.toLowerCase()) || a.href.toLowerCase().includes(t.toLowerCase()));
+                return match ? (match as HTMLAnchorElement).href : null;
+            }, title);
+        }
+
+        if (!movieUrl) {
+            console.log(`[Scraper] S2: No links found for "${title}"`);
+            return null;
+        }
+
+        if (!isOnMoviePage) {
+            console.log(`[Scraper] S2: Navigating to ${movieUrl}`);
+            await page.goto(movieUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        }
 
         const videoSource = await page.evaluate(() => {
-            const iframe = document.querySelector('#plx iframe, figure iframe, iframe[src*="rapidvid"]') as HTMLIFrameElement;
+            const iframe = document.querySelector('#plx iframe, figure iframe, .plx iframe, iframe[src*="rapidvid"], iframe[src*="vidmoly"]') as HTMLIFrameElement;
             return iframe ? iframe.src : null;
         });
         
