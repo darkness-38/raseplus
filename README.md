@@ -1,6 +1,6 @@
 # 🎬 Rase+ — The Ultimate Cinematic Experience
 
-![Rase+ Banner](public/raseplus_banner_v2.png)
+
 
 > **Experience movies and series like never before.** A high-performance, feature-rich streaming platform built with **Next.js 16**, **Tailwind CSS 4**, and **Firebase**.
 
@@ -13,13 +13,11 @@
 ## ✨ Key Features
 
 - 🎥 **Dynamic Catalogs**: Real-time movie and series data powered by **TMDB API**.
-- 📺 **Advanced Video Player**: Built-in **HLS.js** support for high-quality adaptive bitrate streaming.
-- 🇹🇷 **Turkish Source Integration**: Custom-built resilient scrapers for:
-  - **Source 2** (FullHDFilmizlesene) - *Supports AJAX-obfuscated content decoding.*
-  - **Source 3** (HDFilmcehennemi) - *Multi-source link extraction.*
+- 🎥 **Dynamic Catalogs**: Real-time movie and series data powered by **TMDB API**.
+- 📺 **Advanced Video Player**: Premium, high-performance player with support for the latest Vidsrc and multi-embed sources.
 - 👤 **Netflix-Style Profiles**: Manage multiple user profiles with unique preferences.
 - 🔥 **Seamless Auth**: Real-time authentication and database sync via **Firebase**.
-- ⚡ **Cutting-Edge Performance**: Optimized with **Next.js 16 App Router** and **Turbopack**.
+- ⚡ **Cutting-Edge Performance**: Optimized with **Next.js App Router** and **Turbopack**.
 - 🎨 **Premium UI**: Crafted with **Tailwind CSS 4** and **Framer Motion** for glassmorphism and fluid animations.
 
 ---
@@ -34,8 +32,6 @@
 | **Framer Motion** | Micro-interactions & Page Transitions |
 | **Firebase** | Authentication & Cloud Firestore |
 | **Zustand** | Lightweight State Management |
-| **HLS.js** | Advanced Video Playback |
-| **Cheerio** | High-speed Scraper Engine |
 
 ---
 
@@ -83,10 +79,6 @@ raseplus/
    ```
 
 ---
-
-## 🛡️ Scraper Resilience
-
-Our scrapers now feature optimized fetching and resilience.
 
 ---
 
