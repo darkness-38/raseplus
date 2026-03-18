@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^143.0.4",
+    "@sparticuz/chromium-min": "^143.0.4",
     "@vercel/speed-insights": "^2.0.0",
     "cheerio": "^1.2.0",
     "firebase": "^12.9.0",
