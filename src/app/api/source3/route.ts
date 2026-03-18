@@ -7,9 +7,13 @@ const BASE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
     "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": MAIN_URL + "/",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
 };
 
-async function searchMovie(query: string): Promise<string | null> {
+async function searchMovie(query: string): Promise<{ url: string | null; error?: string }> {
     try {
         const searchUrl = `${MAIN_URL}/search/?q=${encodeURIComponent(query)}`;
         const res = await fetch(searchUrl, {
@@ -18,18 +22,30 @@ async function searchMovie(query: string): Promise<string | null> {
                 "X-Requested-With": "fetch",
             },
         });
-        const data = await res.json();
+        
+        if (res.status === 403) return { url: null, error: "Provider blocked request (Cloudflare)" };
+        if (res.status !== 200) return { url: null, error: `Search failed with status ${res.status}` };
+
+        const htmlContent = await res.text();
+        let data;
+        try {
+            data = JSON.parse(htmlContent);
+        } catch (e) {
+            return { url: null, error: "Failed to parse provider response" };
+        }
+
         if (data.results && data.results.length > 0) {
             const $ = cheerio.load(data.results[0]);
             const href = $("a").first().attr("href");
             if (href) {
-                return href.startsWith("http") ? href : `${MAIN_URL}${href}`;
+                return { url: href.startsWith("http") ? href : `${MAIN_URL}${href}` };
             }
         }
     } catch (err) {
         console.error("Search error (source3):", err);
+        return { url: null, error: "Internal search error" };
     }
-    return null;
+    return { url: null };
 }
 
 async function extractVideoLinks(movieUrl: string): Promise<any[]> {
@@ -115,14 +131,22 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Missing title" }, { status: 400 });
     }
 
-    let movieUrl = await searchMovie(title);
+    const { url: movieUrl, error: searchError } = await searchMovie(title);
     if (!movieUrl) {
-        return NextResponse.json({ error: "No results found", sources: [] }, { status: 404 });
+        return NextResponse.json({ 
+            error: searchError || "No results found", 
+            sources: [] 
+        }, { status: 404 });
     }
 
     if (type === "tv" && season && episode) {
-        movieUrl = movieUrl.endsWith("/") ? movieUrl : `${movieUrl}/`;
-        movieUrl = `${movieUrl}sezon-${season}/bolum-${episode}/`;
+        let fullMovieUrl = movieUrl.endsWith("/") ? movieUrl : `${movieUrl}/`;
+        fullMovieUrl = `${fullMovieUrl}sezon-${season}/bolum-${episode}/`;
+        const sources = await extractVideoLinks(fullMovieUrl);
+        if (sources.length === 0) {
+            return NextResponse.json({ error: "No sources found", sources: [] }, { status: 404 });
+        }
+        return NextResponse.json({ sources });
     }
 
     const sources = await extractVideoLinks(movieUrl);
