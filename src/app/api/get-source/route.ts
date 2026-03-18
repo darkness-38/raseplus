@@ -1,37 +1,50 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import chromium from '@sparticuz/chromium';
-
-// Apply Stealth Plugin globally (safely)
-try {
-    const plugin = StealthPlugin();
-    puppeteer.use(plugin);
-} catch (e) {
-    console.warn('Stealth plugin initialization warning:', e);
+// Safe Stealth Plugin initialization
+let stealthApplied = false;
+function applyStealth() {
+    if (stealthApplied) return;
+    try {
+        console.log('[Scraper] Applying Stealth Plugin...');
+        // Use require for better compatibility in serverless
+        const Stealth = require('puppeteer-extra-plugin-stealth');
+        puppeteer.use(Stealth());
+        stealthApplied = true;
+        console.log('[Scraper] Stealth Plugin applied successfully.');
+    } catch (e) {
+        console.error('[Scraper] Stealth plugin initialization error:', e);
+    }
 }
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // 60 seconds (Vercel Pro/Enterprise or local dev)
+export const maxDuration = 60; 
 
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
 async function getBrowser() {
-    if (process.env.NODE_ENV === 'production') {
-        // Vercel / Production environment
-        return await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: (chromium as any).defaultViewport || { width: 1280, height: 720 },
-            executablePath: await chromium.executablePath(),
-            headless: (chromium as any).headless || true,
-        });
-    } else {
-        // Local development
-        return await puppeteer.launch({
-            executablePath: CHROME_PATH,
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+    applyStealth();
+    try {
+        if (process.env.NODE_ENV === 'production') {
+            const executablePath = await chromium.executablePath();
+            console.log(`[Scraper] Launching Production Chrome at ${executablePath}`);
+            return await puppeteer.launch({
+                args: chromium.args,
+                defaultViewport: (chromium as any).defaultViewport || { width: 1280, height: 720 },
+                executablePath: executablePath,
+                headless: (chromium as any).headless || true,
+            });
+        } else {
+            console.log(`[Scraper] Launching Local Chrome at ${CHROME_PATH}`);
+            return await puppeteer.launch({
+                executablePath: CHROME_PATH,
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+        }
+    } catch (launchError) {
+        console.error('[Scraper] Browser launch failed:', launchError);
+        throw launchError;
     }
 }
 
