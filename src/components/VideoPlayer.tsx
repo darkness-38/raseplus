@@ -130,14 +130,7 @@ export default function VideoPlayer() {
         return () => { if (controlTimeoutRef.current) clearTimeout(controlTimeoutRef.current); };
     }, [showControls]);
 
-    // ── Source config ─────────────────────────────────────────────────────────
-    const sources: { id: SourceId; label: string }[] = [
-        { id: "1", label: "Source 1 (Vidsrc)" },
-        { id: "2", label: "Source 2 (TR Dublaj)" },
-        { id: "3", label: "Source 3 (Alternative)" },
-    ];
-
-
+    // ── Footer hint ──────────────────────────────────────────────────────────
     return (
         <motion.div
             initial={{ opacity: 0 }}
