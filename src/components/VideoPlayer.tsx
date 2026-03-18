@@ -124,6 +124,7 @@ export default function VideoPlayer() {
     // ── Source state ──────────────────────────────────────────────────────────
     const [activeSource, setActiveSource] = useState<SourceId>("1");
     const [external2, setExternal2] = useState<ExternalSourceState>(INITIAL_EXTERNAL);
+    const [external3, setExternal3] = useState<ExternalSourceState>(INITIAL_EXTERNAL);
 
     // ── TMDB details & continue-watching ─────────────────────────────────────
     useEffect(() => {
@@ -163,8 +164,8 @@ export default function VideoPlayer() {
     const embedUrl = getEmbedUrl();
 
     // ── Fetch external sources ────────────────────────────────────────────────
-    const fetchExternalSource = useCallback(async (sourceNum: "2") => {
-        const setter = setExternal2;
+    const fetchExternalSource = useCallback(async (sourceNum: "2" | "3") => {
+        const setter = sourceNum === "2" ? setExternal2 : setExternal3;
         const apiRoute = `/api/source${sourceNum}`;
 
         setter({ loading: true, error: null, sources: [], activeIdx: 0 });
@@ -204,7 +205,10 @@ export default function VideoPlayer() {
         if (activeSource === "2" && external2.sources.length === 0 && !external2.loading) {
             fetchExternalSource("2");
         }
-    }, [activeSource, external2, fetchExternalSource]);
+        if (activeSource === "3" && external3.sources.length === 0 && !external3.loading) {
+            fetchExternalSource("3");
+        }
+    }, [activeSource, external2, external3, fetchExternalSource]);
 
     // ── Fullscreen ────────────────────────────────────────────────────────────
     const toggleFullscreen = useCallback(() => {
@@ -250,13 +254,14 @@ export default function VideoPlayer() {
     }, [showControls]);
 
     // ── Active external state shortcuts ───────────────────────────────────────
-    const extState = external2;
+    const extState = activeSource === "3" ? external3 : external2;
     const activeExtUrl = extState.sources[extState.activeIdx]?.url || null;
 
     // ── Source config ─────────────────────────────────────────────────────────
     const sources: { id: SourceId; label: string }[] = [
         { id: "1", label: "Source 1" },
         { id: "2", label: "Source 2 🇹🇷" },
+        { id: "3", label: "Source 3 🇹🇷" },
     ];
 
     return (
@@ -287,14 +292,14 @@ export default function VideoPlayer() {
                     />
                 )}
 
-                {activeSource === "2" && (
+                {(activeSource === "2" || activeSource === "3") && (
                     <div className="w-full h-full flex items-center justify-center bg-black relative z-50">
                         {extState.loading && (
                             <div className="flex flex-col items-center gap-4 text-white">
                                 {/* Spinner */}
                                 <div className="w-14 h-14 border-4 border-white/20 border-t-white rounded-full animate-spin" />
                                 <p className="text-white/70 text-sm">
-                                    Searching for HDFilmCehennemi source...
+                                    Searching for {activeSource === "2" ? "FullHDFilmizlesene" : "HDFilmCehennemi"} source...
                                 </p>
                             </div>
                         )}
@@ -306,7 +311,7 @@ export default function VideoPlayer() {
                                 <p className="text-red-300 font-semibold">No source found</p>
                                 <p className="text-white/50 text-sm">{extState.error}</p>
                                 <button
-                                    onClick={() => fetchExternalSource("2")}
+                                    onClick={() => fetchExternalSource(activeSource === "2" ? "2" : "3")}
                                     className="mt-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm transition-all pointer-events-auto"
                                 >
                                     Try Again
@@ -338,7 +343,8 @@ export default function VideoPlayer() {
                                     <button
                                         key={idx}
                                         onClick={() => {
-                                            setExternal2(prev => ({ ...prev, activeIdx: idx }));
+                                            const setter = activeSource === "2" ? setExternal2 : setExternal3;
+                                            setter(prev => ({ ...prev, activeIdx: idx }));
                                         }}
                                         className={`px-3 py-1 rounded-full text-xs font-medium transition-all pointer-events-auto ${
                                             extState.activeIdx === idx
@@ -420,8 +426,8 @@ export default function VideoPlayer() {
                         >
                             <p className="text-white/60 text-xs sm:text-sm text-center drop-shadow-md pb-2 max-w-lg">
                                 {activeSource === "1"
-                                    ? "Switch between Source 1 or Source 2 🇹🇷 from the top bar. Turkish-dubbed streams load automatically."
-                                    : "Source 2 provides Turkish-dubbed streams from Turkish sites."}
+                                    ? "Switch between Sources from the top bar. Turkish-dubbed streams load automatically."
+                                    : `Source ${activeSource} provides Turkish-dubbed streams from Turkish sites.`}
                                 {playerType === "tv" && " If watching Anime, click the CC icon for subtitles."}
                             </p>
                         </motion.div>
