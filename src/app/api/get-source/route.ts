@@ -32,6 +32,19 @@ function applyStealth() {
     }
 }
 
+function slugify(text: string) {
+    return text.toString().toLowerCase()
+        .replace(/\s+/g, '+')           // Replace spaces with +
+        .replace(/[öÖ]/g, 'o')
+        .replace(/[üÜ]/g, 'u')
+        .replace(/[ıİ]/g, 'i')
+        .replace(/[şŞ]/g, 's')
+        .replace(/[çÇ]/g, 'c')
+        .replace(/[ğĞ]/g, 'g')
+        .replace(/[^\w\+]+/g, '')       // Remove all non-word chars
+        .replace(/\+\++/g, '+');        // Replace multiple + with single +
+}
+
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; 
 
@@ -71,7 +84,7 @@ async function scrapeSource2(title: string) {
         const page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
 
-        const searchUrl = `https://www.fullhdfilmizlesene.live/arama/${encodeURIComponent(title).replace(/%20/g, '+')}`;
+        const searchUrl = `https://www.fullhdfilmizlesene.live/arama/${slugify(title)}`;
         console.log(`[Scraper] Searching Source 2: ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         
@@ -142,7 +155,7 @@ async function scrapeSource3(title: string) {
         await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         
         // Check if we can use a direct search query if dropdown fails
-        const directSearchUrl = `https://www.hdfilmcehennemi.nl/?s=${encodeURIComponent(title).replace(/%20/g, '+')}`;
+        const directSearchUrl = `https://www.hdfilmcehennemi.nl/?s=${slugify(title)}`;
         await page.goto(directSearchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
         // Check if redirected directly
