@@ -232,9 +232,8 @@ export default function VideoPlayer() {
                         // @ts-ignore
                         webkitallowfullscreen="true"
                         mozallowfullscreen="true"
-                        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share; clipboard-write"
-                        referrerPolicy="origin"
-                        loading="lazy"
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; web-share"
+                        referrerPolicy="no-referrer-when-downgrade"
                     />
                 )}
 
