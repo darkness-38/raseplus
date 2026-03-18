@@ -31,7 +31,7 @@ const FullscreenExitIcon = () => (
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SourceId = "1";
+type SourceId = "1" | "2" | "3";
 
 interface ExternalVideoSource {
     label: string;
@@ -123,6 +123,40 @@ export default function VideoPlayer() {
 
     // ── Source state ──────────────────────────────────────────────────────────
     const [activeSource, setActiveSource] = useState<SourceId>("1");
+    const [externalSource, setExternalSource] = useState<{ url: string; type: "hls" | "iframe" } | null>(null);
+    const [externalLoading, setExternalLoading] = useState(false);
+    const [externalError, setExternalError] = useState<string | null>(null);
+
+    // ── Fetch External Source ────────────────────────────────────────────────
+    const fetchExternalSource = useCallback(async (providerId: string) => {
+        if (!playerTmdbId || !playerTitle) return;
+        
+        setExternalLoading(true);
+        setExternalError(null);
+        setExternalSource(null);
+
+        try {
+            const provider = providerId === "2" ? "source2" : "source3";
+            const res = await fetch(`/api/get-source?title=${encodeURIComponent(playerTitle)}&tmdbId=${playerTmdbId}&type=${playerType}&season=${playerSeason}&episode=${playerEpisode}&provider=${provider}`);
+            
+            if (!res.ok) throw new Error("Failed to fetch source from scraper");
+            
+            const data = await res.json();
+            setExternalSource(data);
+        } catch (err: any) {
+            console.error("Scraper Error:", err);
+            setExternalError(err.message || "Failed to load source");
+        } finally {
+            setExternalLoading(false);
+        }
+    }, [playerTmdbId, playerTitle, playerType, playerSeason, playerEpisode]);
+
+    useEffect(() => {
+        if (activeSource === "2" || activeSource === "3") {
+            fetchExternalSource(activeSource);
+        }
+    }, [activeSource, fetchExternalSource]);
+
 
     // ── TMDB details & continue-watching ─────────────────────────────────────
     useEffect(() => {
@@ -207,8 +241,11 @@ export default function VideoPlayer() {
 
     // ── Source config ─────────────────────────────────────────────────────────
     const sources: { id: SourceId; label: string }[] = [
-        { id: "1", label: "Source 1" },
+        { id: "1", label: "Source 1 (Vidsrc)" },
+        { id: "2", label: "Source 2 (TR Dublaj)" },
+        { id: "3", label: "Source 3 (Alternative)" },
     ];
+
 
     return (
         <motion.div
@@ -237,6 +274,43 @@ export default function VideoPlayer() {
                         loading="lazy"
                     />
                 )}
+
+                {(activeSource === "2" || activeSource === "3") && (
+                    <div className="w-full h-full relative z-50 bg-black flex items-center justify-center">
+                        {externalLoading && (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                                <p className="text-white/70 text-sm font-medium">Scraping source... Please wait</p>
+                            </div>
+                        )}
+                        
+                        {externalError && (
+                            <div className="flex flex-col items-center gap-4 p-6 text-center">
+                                <p className="text-red-400 font-medium">{externalError}</p>
+                                <button 
+                                    onClick={() => fetchExternalSource(activeSource)}
+                                    className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-sm transition-all"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        )}
+
+                        {!externalLoading && !externalError && externalSource && (
+                            externalSource.type === "hls" ? (
+                                <HlsVideoPlayer url={externalSource.url} />
+                            ) : (
+                                <iframe
+                                    src={externalSource.url}
+                                    className="w-full h-full border-0"
+                                    allowFullScreen
+                                    allow="autoplay; fullscreen; encrypted-media"
+                                />
+                            )
+                        )}
+                    </div>
+                )}
+
 
                 {/* ── Header Controls ── */}
                 <AnimatePresence>
