@@ -54,24 +54,36 @@ async function getBrowser() {
     applyStealth();
     try {
         if (process.env.NODE_ENV === 'production') {
+            // Vercel deployment often requires specific flags for @sparticuz/chromium
             const executablePath = await chromium.executablePath();
             console.log(`[Scraper] Launching Production Chrome at ${executablePath}`);
+            
             return await puppeteer.launch({
-                args: chromium.args,
-                defaultViewport: (chromium as any).defaultViewport || { width: 1280, height: 720 },
+                args: [
+                   ...chromium.args,
+                   '--no-sandbox',
+                   '--disable-setuid-sandbox',
+                   '--disable-dev-shm-usage',
+                   '--disable-gpu',
+                ],
+                defaultViewport: chromium.defaultViewport,
                 executablePath: executablePath,
-                headless: (chromium as any).headless || true,
+                headless: chromium.headless,
             });
         } else {
             console.log(`[Scraper] Launching Local Chrome at ${CHROME_PATH}`);
             return await puppeteer.launch({
                 executablePath: CHROME_PATH,
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
             });
         }
-    } catch (launchError) {
-        console.error('[Scraper] Browser launch failed:', launchError);
+    } catch (launchError: any) {
+        console.error('[Scraper] Browser launch failed:', launchError.message);
+        // Special case for binary path issues: log the error details
+        if (launchError.message.includes('directory') || launchError.message.includes('brotli')) {
+            console.error('[Scraper] This is a known Vercel/Chromium bundling issue.');
+        }
         throw launchError;
     }
 }
