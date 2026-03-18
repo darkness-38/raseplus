@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-extra';
 import chromium from '@sparticuz/chromium';
+
+const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY || "";
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+async function getTurkishTitle(id: string, type: string): Promise<string | null> {
+    if (!TMDB_API_KEY || !id) return null;
+    try {
+        const res = await fetch(`${TMDB_BASE_URL}/${type}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.title || data.name || null;
+    } catch (e) {
+        return null;
+    }
+}
 // Safe Stealth Plugin initialization
 let stealthApplied = false;
 function applyStealth() {
@@ -60,25 +75,34 @@ async function scrapeSource2(title: string) {
         console.log(`[Scraper] Searching Source 2: ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         
-        // Wait for results
-        await page.waitForSelector('span.t, a.tt', { timeout: 10000 }).catch(() => {});
+        // Check if we were redirected directly to a movie page
+        const isOnMoviePage = await page.evaluate(() => !!document.querySelector('#plx, figure.ply, .video-play-button'));
+        
+        let movieUrl = isOnMoviePage ? page.url() : null;
 
-        const firstResult = await page.evaluate(() => {
-            const span = document.querySelector('span.t');
-            const link = span ? span.closest('a') : document.querySelector('a.tt');
-            return link ? (link as HTMLAnchorElement).href : null;
-        });
+        if (!movieUrl) {
+            console.log(`[Scraper] Not redirected. Waiting for search results...`);
+            await page.waitForSelector('span.t, a.tt, .film-box a', { timeout: 15000 }).catch(() => {});
 
-        if (!firstResult) {
-            console.log(`[Scraper] No results found for ${title} on Source 2`);
+            movieUrl = await page.evaluate(() => {
+                const span = document.querySelector('span.t');
+                const link = span ? span.closest('a') : (document.querySelector('a.tt') || document.querySelector('.film-box a'));
+                return link ? (link as HTMLAnchorElement).href : null;
+            });
+        }
+
+        if (!movieUrl) {
+            console.log(`[Scraper] No movie URL found for ${title} on Source 2`);
             return null;
         }
 
-        console.log(`[Scraper] Found movie page: ${firstResult}`);
-        await page.goto(firstResult, { waitUntil: 'networkidle2', timeout: 30000 });
+        if (!isOnMoviePage) {
+            console.log(`[Scraper] Navigating to movie page: ${movieUrl}`);
+            await page.goto(movieUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        }
 
         const videoSource = await page.evaluate(() => {
-            const iframe = document.querySelector('#plx iframe, figure iframe, iframe[src*="rapidvid"]') as HTMLIFrameElement;
+            const iframe = document.querySelector('#plx iframe, figure iframe, .plx iframe, iframe[src*="rapidvid"], iframe[src*="vidmoly"]') as HTMLIFrameElement;
             return iframe ? iframe.src : null;
         });
         
@@ -114,32 +138,39 @@ async function scrapeSource3(title: string) {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
 
         const searchUrl = `https://www.hdfilmcehennemi.nl/`;
-        console.log(`[Scraper] Searching Source 3 via dropdown: ${searchUrl}`);
+        console.log(`[Scraper] Searching Source 3: ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
         
-        // Use the search input to trigger dropdown
-        await page.click('input[name="s"], #search-input').catch(() => {});
-        await page.type('input[name="s"], #search-input', title, { delay: 100 });
-        
-        // Wait for dropdown results
-        await page.waitForSelector('a.search-result', { timeout: 15000 }).catch(() => {});
+        // Check if we can use a direct search query if dropdown fails
+        const directSearchUrl = `https://www.hdfilmcehennemi.nl/?s=${encodeURIComponent(title).replace(/%20/g, '+')}`;
+        await page.goto(directSearchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
-        const firstResult = await page.evaluate(() => {
-            const link = document.querySelector('a.search-result') as HTMLAnchorElement;
-            return link ? link.href : null;
-        });
+        // Check if redirected directly
+        const isOnMoviePage = await page.evaluate(() => !!document.querySelector('#player, .video-content, iframe.close'));
+        let movieUrl = isOnMoviePage ? page.url() : null;
 
-        if (!firstResult) {
-            console.log(`[Scraper] No results found for ${title} on Source 3`);
+        if (!movieUrl) {
+            await page.waitForSelector('.poster-container a, a.search-result', { timeout: 15000 }).catch(() => {});
+            movieUrl = await page.evaluate(() => {
+                const link = document.querySelector('.poster-container a, a.search-result') as HTMLAnchorElement;
+                return link ? link.href : null;
+            });
+        }
+
+        if (!movieUrl) {
+            console.log(`[Scraper] No movie URL found for ${title} on Source 3`);
             return null;
         }
 
-        console.log(`[Scraper] Found movie page: ${firstResult}`);
-        await page.goto(firstResult, { waitUntil: 'networkidle2', timeout: 30000 });
-        await page.waitForSelector('#player, .embed-responsive, iframe', { timeout: 10000 }).catch(() => {});
+        if (!isOnMoviePage) {
+            console.log(`[Scraper] Navigating to movie page: ${movieUrl}`);
+            await page.goto(movieUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        }
+
+        await page.waitForSelector('#player, iframe, .embed-responsive', { timeout: 10000 }).catch(() => {});
 
         const videoSource = await page.evaluate(() => {
-            const iframe = document.querySelector('iframe.close, #player iframe, iframe[src*="hdfilmcehennemi.mobi"]') as HTMLIFrameElement;
+            const iframe = document.querySelector('iframe.close, #player iframe, .embed-responsive iframe, iframe[src*="hdfilmcehennemi.mobi"]') as HTMLIFrameElement;
             return iframe ? iframe.src : null;
         });
 
@@ -158,16 +189,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title');
     const provider = searchParams.get('provider');
+    const tmdbId = searchParams.get('tmdbId');
+    const type = searchParams.get('type') || 'movie';
 
     if (!title || !provider) {
         return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
+    // Try to get Turkish title for better scraping accuracy on TR sites
+    const turkishTitle = tmdbId ? await getTurkishTitle(tmdbId, type) : null;
+    const searchTerms = turkishTitle && turkishTitle !== title ? [turkishTitle, title] : [title];
+
+    console.log(`[Scraper] Initializing for ${title} (TR: ${turkishTitle || 'N/A'}) using terms: ${searchTerms.join(', ')}`);
+
     let result = null;
-    if (provider === 'source2') {
-        result = await scrapeSource2(title);
-    } else if (provider === 'source3') {
-        result = await scrapeSource3(title);
+    for (const term of searchTerms) {
+        if (provider === 'source2') {
+            result = await scrapeSource2(term);
+        } else if (provider === 'source3') {
+            result = await scrapeSource3(term);
+        }
+        if (result) break; // Stop if we found a source
     }
 
     if (result) {
