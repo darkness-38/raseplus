@@ -84,12 +84,9 @@ raseplus/
 
 ---
 
-## 🛡️ Scraper Troubleshooting
+## 🛡️ Scraper Resilience
 
-If you encounter issues with **Source 2** or **Source 3**:
-- **Status 451**: This indicates a legal/regional block by the provider for your server's IP.
-- **Status 403**: Typically triggered by Cloudflare. Our scrapers include advanced headers and decoding, but IP reputation matters.
-- **Solution**: Consider using a proxy or a different deployment region if your specific server IP is restricted.
+Our scrapers now feature optimized fetching and resilience.
 
 ---
 
