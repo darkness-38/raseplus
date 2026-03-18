@@ -5,9 +5,10 @@ import chromium from '@sparticuz/chromium';
 
 // Apply Stealth Plugin globally (safely)
 try {
-    puppeteer.use(StealthPlugin());
+    const plugin = StealthPlugin();
+    puppeteer.use(plugin);
 } catch (e) {
-    // Avoid double-applying in some environments
+    console.warn('Stealth plugin initialization warning:', e);
 }
 
 export const dynamic = 'force-dynamic';
@@ -20,9 +21,9 @@ async function getBrowser() {
         // Vercel / Production environment
         return await puppeteer.launch({
             args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
+            defaultViewport: (chromium as any).defaultViewport || { width: 1280, height: 720 },
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            headless: (chromium as any).headless || true,
         });
     } else {
         // Local development
