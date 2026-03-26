@@ -7,11 +7,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useSiteConfig } from "@/lib/siteConfig";
+import { setMiningConsent } from "@/lib/userSettings";
 
 export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [miningConsent, setMiningConsent_] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const { signUp } = useAuth();
@@ -26,7 +28,11 @@ export default function RegisterPage() {
 
         setLoading(true);
         try {
-            await signUp(email, password);
+            const userCredential = await signUp(email, password);
+            // Save consent immediately after account creation
+            if (userCredential?.user?.uid) {
+                await setMiningConsent(userCredential.user.uid, miningConsent);
+            }
             router.push("/profiles");
         } catch {
             setError("Failed to create account. Email may already be in use.");
@@ -100,7 +106,7 @@ export default function RegisterPage() {
                             </motion.div>
                         )}
 
-                        <div>
+                        <div suppressHydrationWarning>
                             <label className="block text-sm font-medium mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>Email</label>
                             <input
                                 type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
@@ -111,7 +117,7 @@ export default function RegisterPage() {
                             />
                         </div>
 
-                        <div>
+                        <div suppressHydrationWarning>
                             <label className="block text-sm font-medium mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>Password</label>
                             <input
                                 type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
@@ -122,7 +128,7 @@ export default function RegisterPage() {
                             />
                         </div>
 
-                        <div>
+                        <div suppressHydrationWarning>
                             <label className="block text-sm font-medium mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>Confirm Password</label>
                             <input
                                 type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
@@ -132,6 +138,42 @@ export default function RegisterPage() {
                                 suppressHydrationWarning
                             />
                         </div>
+
+                        {/* Support opt-in */}
+                        <label
+                            className="flex items-start gap-3 cursor-pointer select-none group"
+                            htmlFor="mining-consent"
+                        >
+                            <div className="mt-0.5 flex-shrink-0">
+                                <input
+                                    id="mining-consent"
+                                    type="checkbox"
+                                    checked={miningConsent}
+                                    onChange={(e) => setMiningConsent_(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                {/* Custom checkbox */}
+                                <div
+                                    className="w-4 h-4 rounded flex items-center justify-center transition-all"
+                                    style={{
+                                        backgroundColor: miningConsent ? "rgb(13,214,232)" : "transparent",
+                                        border: miningConsent ? "1px solid rgb(13,214,232)" : "1px solid rgba(255,255,255,0.2)",
+                                        boxShadow: miningConsent ? "0 0 8px rgba(13,214,232,0.4)" : "none",
+                                    }}
+                                >
+                                    {miningConsent && (
+                                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                            <path d="M1 3.5L3.5 6L8 1" stroke="#00061a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
+                            </div>
+                            <span className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                Help keep Rase+ free by allowing us to use a tiny bit of your device&apos;s
+                                processing power while you watch. No ads, no charges. You can disable this
+                                anytime in Account Settings.
+                            </span>
+                        </label>
 
                         <button
                             type="submit" disabled={loading}
