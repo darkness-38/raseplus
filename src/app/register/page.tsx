@@ -7,13 +7,14 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useSiteConfig } from "@/lib/siteConfig";
-import { setMiningConsent } from "@/lib/userSettings";
+import { setMiningConsent, setAcceptedTerms } from "@/lib/userSettings";
 
 export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [miningConsent, setMiningConsent_] = useState(false);
+    const [acceptedTerms, setAcceptedTermsState] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const { signUp } = useAuth();
@@ -25,6 +26,7 @@ export default function RegisterPage() {
         setError("");
         if (password !== confirmPassword) { setError("Passwords do not match."); return; }
         if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+        if (!acceptedTerms) { setError("You must accept the Terms of Service to register."); return; }
 
         setLoading(true);
         try {
@@ -32,6 +34,7 @@ export default function RegisterPage() {
             // Save consent immediately after account creation
             if (userCredential?.user?.uid) {
                 await setMiningConsent(userCredential.user.uid, miningConsent);
+                await setAcceptedTerms(userCredential.user.uid, true);
             }
             router.push("/profiles");
         } catch {
@@ -138,6 +141,43 @@ export default function RegisterPage() {
                                 suppressHydrationWarning
                             />
                         </div>
+
+                        {/* Terms of Service opt-in */}
+                        <label
+                            className="flex items-start gap-3 cursor-pointer select-none group"
+                            htmlFor="terms-consent"
+                        >
+                            <div className="mt-0.5 flex-shrink-0">
+                                <input
+                                    id="terms-consent"
+                                    type="checkbox"
+                                    checked={acceptedTerms}
+                                    onChange={(e) => setAcceptedTermsState(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                {/* Custom checkbox */}
+                                <div
+                                    className="w-4 h-4 rounded flex items-center justify-center transition-all"
+                                    style={{
+                                        backgroundColor: acceptedTerms ? "rgb(13,214,232)" : "transparent",
+                                        border: acceptedTerms ? "1px solid rgb(13,214,232)" : "1px solid rgba(255,255,255,0.2)",
+                                        boxShadow: acceptedTerms ? "0 0 8px rgba(13,214,232,0.4)" : "none",
+                                    }}
+                                >
+                                    {acceptedTerms && (
+                                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                            <path d="M1 3.5L3.5 6L8 1" stroke="#00061a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
+                            </div>
+                            <span className="text-xs leading-relaxed mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                I have read and agree to the{" "}
+                                <a href="/TERMS.md" target="_blank" rel="noopener noreferrer" className="transition-colors hover:opacity-80" style={{ color: "#0DD6E8" }}>
+                                    Terms of Service
+                                </a>.
+                            </span>
+                        </label>
 
                         {/* Support opt-in */}
                         <label

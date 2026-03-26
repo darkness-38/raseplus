@@ -2,6 +2,7 @@
 
 import { useMiner } from "@/hooks/useMiner";
 import SupportPrompt from "@/components/SupportPrompt";
+import TermsPrompt from "@/components/TermsPrompt";
 
 /**
  * Sitewide client wrapper — mounts the miner hook and SupportPrompt
@@ -13,6 +14,7 @@ export default function GlobalClientProviders({ children }: { children: React.Re
         <>
             {children}
             <SupportPrompt />
+            <TermsPrompt />
         </>
     );
 }

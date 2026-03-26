@@ -79,13 +79,9 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 3. **Configure Environment Variables**:
    Create a `.env.local` file in the root directory and add your credentials:
    ```env
+   TMDB_API_KEY=your_tmdb_api_key
    NEXT_PUBLIC_TMDB_API_KEY=your_tmdb_api_key
-   NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
-   NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+   NEXT_PUBLIC_OMDB_API_KEY=your_omdb_api_key
    ```
 
 4. **Run the development server**:
@@ -101,6 +97,10 @@ Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
 ## 🤝 Contributing
 
 Contributions are always welcome! Feel free to open an issue or submit a Pull Request if you'd like to improve the project.
+
+## 📜 Terms of Service
+
+Please review our [Terms of Service](TERMS.md) before using the application.
 
 ## 📄 License
 
