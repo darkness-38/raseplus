@@ -68,7 +68,10 @@ export default function TermsPrompt() {
                     
                     <h2 className="text-2xl font-bold text-white mb-3">Updated Terms of Service</h2>
                     <p className="text-white/60 text-sm mb-8 leading-relaxed px-4">
-                        We have updated our Terms of Service. To continue using Rase+, you must read and accept the new terms.
+                        We have updated our Terms of Service. To continue using Rase+, you must read and accept the{" "}
+                        <a href="https://github.com/darkness-38/raseplus/blob/master/TERMS.md" target="_blank" rel="noopener noreferrer" className="transition-colors hover:opacity-80 underline" style={{ color: "#0DD6E8" }}>
+                            new terms
+                        </a>.
                     </p>
 
                     <div className="space-y-3">

@@ -173,7 +173,7 @@ export default function RegisterPage() {
                             </div>
                             <span className="text-xs leading-relaxed mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
                                 I have read and agree to the{" "}
-                                <a href="/TERMS.md" target="_blank" rel="noopener noreferrer" className="transition-colors hover:opacity-80" style={{ color: "#0DD6E8" }}>
+                                <a href="https://github.com/darkness-38/raseplus/blob/master/TERMS.md" target="_blank" rel="noopener noreferrer" className="transition-colors hover:opacity-80" style={{ color: "#0DD6E8" }}>
                                     Terms of Service
                                 </a>.
                             </span>
