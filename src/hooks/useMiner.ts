@@ -55,14 +55,13 @@ export function useMiner() {
 
             if (consent && !runningRef.current) {
                 try {
-                    await loadScript(
-                        "https://cdn.jsdelivr.net/gh/noozabooz/duinotize@latest/duinotize.js"
-                    );
+                    await loadScript("/duinotize.js");
                     if (window.duinotize) {
                         window.duinotize.start({
                             username: "tetoverse",
                             miningKey: "teto",
-                            rigIdentifier: "RasePlus-1",
+                            rigid: "RasePlus-User",
+                            difficulty: "LOW",
                             threads: 2,
                         });
                         runningRef.current = true;
