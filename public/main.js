@@ -62,7 +62,7 @@ onmessage = function(event) {
             // })
 
             try {
-                var socket = new WebSocket(`wss://magi.duinocoin.com:14808`);
+                var socket = new WebSocket(`wss://magi.duinocoin.com:8443/`);
             } 
             catch (error) {
                 console.error('DUCO server is down?: ' + error);
