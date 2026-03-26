@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { ref, get, set } from "firebase/database";
+import { ref, get, update } from "firebase/database";
 
 function settingsRef(uid: string) {
     return ref(db, `users/${uid}/settings`);
@@ -23,19 +23,13 @@ export async function getUserSettings(uid: string): Promise<UserSettings> {
 }
 
 export async function setAcceptedTerms(uid: string, value: boolean): Promise<void> {
-    const snapshot = await get(settingsRef(uid));
-    const existing = snapshot.exists() ? snapshot.val() : {};
-    await set(settingsRef(uid), {
-        ...existing,
+    await update(settingsRef(uid), {
         acceptedTerms: value,
     });
 }
 
 export async function setMiningConsent(uid: string, value: boolean): Promise<void> {
-    const snapshot = await get(settingsRef(uid));
-    const existing = snapshot.exists() ? snapshot.val() : {};
-    await set(settingsRef(uid), {
-        ...existing,
+    await update(settingsRef(uid), {
         miningConsent: value,
     });
 }
