@@ -65,11 +65,11 @@ onmessage = function(event) {
                 var socket = new WebSocket(`wss://magi.duinocoin.com:8443/`);
             } 
             catch (error) {
-                console.error('DUCO server is down?: ' + error);
+// ('DUCO server is down?: ' + error);
             }
 
             socket.onopen = function(event) {
-                console.log('%c' + `${getTime()} | ` + "CPU" + workerID + ": Connected to server as: '" + rigid + "'", 'color:green');
+// ('%c' + `${getTime()} | ` + "CPU" + workerID + ": Connected to server as: '" + rigid + "'", 'color:green');
                 let jobReq = "JOB," + username + "," + difficulty;
                 if (miningKey !== "None" && miningKey !== "") jobReq += "," + miningKey;
                 socket.send(jobReq);
@@ -78,24 +78,24 @@ onmessage = function(event) {
             socket.onmessage = async function(event) {
                 var serverMessage = event.data;
                 if (serverMessage.includes("4.")) {
-                console.log(`${getTime()} | ` + "CPU" + workerID + ": Debug info: " + username + " | " + "ID:" + wallet_id + " | " + difficulty + " | " + hasher + " | " + serverMessage);
+// (`${getTime()} | ` + "CPU" + workerID + ": Debug info: " + username + " | " + "ID:" + wallet_id + " | " + difficulty + " | " + hasher + " | " + serverMessage);
                 } else if (serverMessage.includes("GOOD")) {
-                    console.log(`%c` + `${getTime()} | ` + "CPU" + workerID + ": Share accepted: " + result, 'color:#B1FFCA');
-                    console.log("----------------------------------------");
+// (`%c` + `${getTime()} | ` + "CPU" + workerID + ": Share accepted: " + result, 'color:#B1FFCA');
+// ("----------------------------------------");
                     let jobReq = "JOB," + username + "," + difficulty;
                     if (miningKey !== "None" && miningKey !== "") jobReq += "," + miningKey;
                     socket.send(jobReq);
                 } else if (serverMessage.includes("BAD")) {
-                    console.log('%c' + `${getTime()} | ` + "CPU" + workerID + ": Share rejected: " + result, 'color:red');
+// ('%c' + `${getTime()} | ` + "CPU" + workerID + ": Share rejected: " + result, 'color:red');
                     let jobReq = "JOB," + username + "," + difficulty;
                     if (miningKey !== "None" && miningKey !== "") jobReq += "," + miningKey;
                     socket.send(jobReq);
                 } else if (serverMessage.includes("This user doesn't exist")) {
-                    console.log(`${getTime()} | ` + "CPU" + workerID + ": User not found!", 'color:red');
+// (`${getTime()} | ` + "CPU" + workerID + ": User not found!", 'color:red');
                 } else if (serverMessage.includes("Too many workers")) {
-                    console.log(`${getTime()} | ` + "CPU" + workerID + ": Too many workers", 'color:red');
+// (`${getTime()} | ` + "CPU" + workerID + ": Too many workers", 'color:red');
                 } else if (serverMessage.length >= 40) {
-                    console.log(`%c` + `${getTime()} | ` + "CPU" + workerID + ": Job received: " + serverMessage, 'color:yellow');
+// (`%c` + `${getTime()} | ` + "CPU" + workerID + ": Job received: " + serverMessage, 'color:yellow');
                     job = serverMessage.split(",");
                     difficulty = job[2];
 
@@ -116,21 +116,21 @@ onmessage = function(event) {
                             hashrate = (result / timeDifference).toFixed(2);
 
                             socket.send(result + "," + hashrate + ",Duinotize Web v1.4," + rigid + ",," + wallet_id);
-                            console.log('%c' + `${getTime()} | ` + "CPU" + workerID + ": Nonce found: " + result + " Time: " + Math.round(timeDifference) + "s Hashrate: " + formatHash(hashrate), 'color:#76E7FF');
+// ('%c' + `${getTime()} | ` + "CPU" + workerID + ": Nonce found: " + result + " Time: " + Math.round(timeDifference) + "s Hashrate: " + formatHash(hashrate), 'color:#76E7FF');
                         }
                     }
                 } else {
-                    console.log(`${getTime()} | ` + "CPU" + workerID + ": " + serverMessage);
-                    console.log("Invalid message received from server.");
+// (`${getTime()} | ` + "CPU" + workerID + ": " + serverMessage);
+// ("Invalid message received from server.");
                 }
             }
             socket.onerror = function(event) {
-                console.error("CPU" + workerID + "WebSocket error observed, trying to reconnect: ", event);
+// ("CPU" + workerID + "WebSocket error observed, trying to reconnect: ", event);
                 socket.close(1000, "Reason: Error occured in WebWorker.");
-                console.log("----------------------------------------");
+// ("----------------------------------------");
             }
             socket.onclose = function(event) {
-                console.warn("CPU" + workerID + ": WebSocket close observed, trying to reconnect: ", event);
+// ("CPU" + workerID + ": WebSocket close observed, trying to reconnect: ", event);
                 setTimeout(function() {
                     connect();
                 }, 15000);
