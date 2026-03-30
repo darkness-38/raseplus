@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import GlobalClientProviders from "@/components/GlobalClientProviders";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
           </GlobalClientProviders>
         </AuthProvider>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
