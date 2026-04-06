@@ -23,6 +23,7 @@ const COLORS = {
 
 /* ─────────────────── DATA ─────────────────── */
 const navLinks = ["Home", "Benefits", "Plans", "Movies", "FAQ"];
+const trustHighlights = ["HD Streaming", "No Ads", "Cancel Anytime"];
 
 const brands = [
   { name: "Disney", logo: "https://framerusercontent.com/images/vn6jHDAc8dRDjB3fUUZHLIfXNQ.png" },
@@ -211,11 +212,12 @@ export default function LandingPage() {
     >
       {/* ═══════════════════════ NAVBAR ═══════════════════════ */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 lg:px-10 transition-all duration-300 h-16 sm:h-20"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 lg:px-10 transition-all duration-300 h-16 sm:h-20 border-b"
         style={{
           backgroundColor: scrolled ? "rgba(0,6,26,0.85)" : "transparent",
           backdropFilter: scrolled ? "blur(20px)" : "none",
           WebkitBackdropFilter: scrolled ? "blur(20px)" : "none",
+          borderColor: scrolled ? "rgba(255,255,255,0.08)" : "transparent",
         }}
       >
         {/* Logo */}
@@ -233,19 +235,25 @@ export default function LandingPage() {
 
         {/* Center Nav Links – pill container */}
         <div
-          className="hidden md:flex items-center gap-0 rounded-full px-1 py-1"
+          className="hidden md:flex items-center gap-0 rounded-full px-1.5 py-1.5"
           style={{
-            border: `1px solid ${COLORS.white10}`,
-            backgroundColor: COLORS.white05,
-            backdropFilter: "blur(2px)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            backgroundColor: "rgba(0,6,26,0.46)",
+            backdropFilter: "blur(10px)",
+            boxShadow: "0 8px 20px rgba(0,0,0,0.22)",
           }}
         >
           {navLinks.map((link) => (
             <a
               key={link}
               href={`#${link.toLowerCase()}`}
-              className="px-4 py-2 rounded-full text-sm transition-colors hover:bg-white/10"
-              style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif", letterSpacing: "-0.02em", color: "white" }}
+              className="px-4 py-2 rounded-full text-[13px] font-semibold transition-colors hover:bg-white/12"
+              style={{
+                fontFamily: "'Google Sans Flex', system-ui, sans-serif",
+                letterSpacing: "-0.01em",
+                color: link === "Home" ? COLORS.white : "rgba(255,255,255,0.82)",
+                backgroundColor: link === "Home" ? "rgba(255,255,255,0.1)" : "transparent",
+              }}
             >
               {link}
             </a>
@@ -258,8 +266,9 @@ export default function LandingPage() {
             href="/login"
             className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all hover:bg-white/10"
             style={{
-              border: `1px solid ${COLORS.white10}`,
-              backdropFilter: "blur(5px)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              backgroundColor: "rgba(0,6,26,0.38)",
+              backdropFilter: "blur(8px)",
               letterSpacing: "-0.02em",
             }}
           >
@@ -270,7 +279,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/register"
-            className="text-sm px-5 py-2.5"
+            className="text-sm px-5 py-2.5 hover:scale-[1.02] active:scale-[0.98] transition-transform"
             style={ctaStyle}
           >
             Get Started
@@ -295,6 +304,31 @@ export default function LandingPage() {
               }}
             />
           </div>
+          {/* Readability overlays */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(50% 42% at 50% 34%, rgba(0,6,26,0.18) 0%, rgba(0,6,26,0.72) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(0,6,26,0.52) 0%, rgba(0,6,26,0.24) 35%, rgba(0,6,26,0.85) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            className="absolute left-1/2 top-[18%] -translate-x-1/2 w-[760px] max-w-[95%] h-[380px] rounded-full"
+            style={{
+              background: "radial-gradient(circle, rgba(0,6,26,0.56) 0%, rgba(0,6,26,0) 72%)",
+              filter: "blur(8px)",
+              pointerEvents: "none",
+            }}
+          />
           {/* Bottom glow */}
           <div
             className="absolute bottom-[-400px] left-[-160px] right-[-160px] h-[1377px]"
@@ -311,26 +345,26 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="flex flex-col items-center gap-6"
+            className="flex flex-col items-center gap-7"
           >
             <h1
-              className="text-4xl sm:text-5xl lg:text-[72px] font-black leading-[1.05] tracking-tight"
+              className="text-4xl sm:text-6xl lg:text-[78px] font-black leading-[1.02] tracking-tight max-w-[16ch] text-balance"
               style={{ fontFamily: "'Google Sans Flex', system-ui, sans-serif" }}
             >
               {cfg.landing.heroTitle}
             </h1>
 
             <p
-              className="text-base sm:text-lg lg:text-2xl leading-[1.4] max-w-[600px]"
-              style={{ color: COLORS.white70, letterSpacing: "-0.01em" }}
+              className="text-base sm:text-lg lg:text-[23px] leading-[1.55] max-w-[560px]"
+              style={{ color: "rgba(255,255,255,0.82)", letterSpacing: "-0.005em" }}
             >
               {cfg.landing.heroSubtitle}
             </p>
 
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-4 mt-3 flex-wrap justify-center">
               <Link
                 href="/register"
-                className="group flex items-center gap-2 px-8 py-4 text-base transition-all hover:scale-105 active:scale-95"
+                className="group flex items-center gap-2 px-9 py-4 text-base transition-all hover:scale-105 active:scale-95"
                 style={ctaStyle}
               >
                 {cfg.landing.ctaText}
@@ -338,16 +372,37 @@ export default function LandingPage() {
               </Link>
               <a
                 href="#plans"
-                className="px-8 py-4 rounded-full text-base font-semibold hover:bg-white/10 transition-all"
+                className="px-9 py-4 rounded-full text-base font-semibold transition-all hover:bg-white/12"
                 style={{
-                  border: `1px solid ${COLORS.white10}`,
-                  backgroundColor: COLORS.white05,
-                  color: COLORS.white70,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  backgroundColor: "rgba(0,6,26,0.5)",
+                  color: "rgba(255,255,255,0.92)",
                   letterSpacing: "-0.02em",
+                  backdropFilter: "blur(8px)",
                 }}
               >
                 {cfg.landing.secondaryCtaText}
               </a>
+            </div>
+            <div className="flex flex-wrap justify-center items-center gap-3 mt-1">
+              {trustHighlights.map((item) => (
+                <div
+                  key={item}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    backgroundColor: "rgba(0,6,26,0.45)",
+                    color: "rgba(255,255,255,0.86)",
+                    backdropFilter: "blur(6px)",
+                  }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: COLORS.cyan, boxShadow: `0 0 8px ${COLORS.cyan}` }}
+                  />
+                  {item}
+                </div>
+              ))}
             </div>
           </motion.div>
         </motion.div>
