@@ -55,10 +55,10 @@ export default function VideoPlayer() {
     // ── Discord RPC ───────────────────────────────────────────────────────────
     useEffect(() => {
         if (playerTitle) {
-            onPlay(playerTitle);
+            onPlay(playerTitle, playerType, playerSeason, playerEpisode);
         }
         return () => sendStop();
-    }, [playerTitle, onPlay, sendStop]);
+    }, [playerTitle, playerType, playerSeason, playerEpisode, onPlay, sendStop]);
 
     // ── Source state ──────────────────────────────────────────────────────────
     // ── TMDB details & continue-watching ─────────────────────────────────────
