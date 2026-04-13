@@ -42,7 +42,6 @@ export default function RootLayout({
         </AuthProvider>
         <SpeedInsights />
         <Analytics />
-        <script src="/raseplus-rpc.js" defer></script>
       </body>
     </html>
   );

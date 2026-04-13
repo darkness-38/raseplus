@@ -2,108 +2,108 @@
 
 import { useEffect, useRef } from "react";
 
-type Action = 
-    | { action: "izliyor"; movieName: string; type: string; season?: string | number; episode?: string | number; currentTime?: number; duration?: number } 
-    | { action: "durdu" };
+const API_URL = "https://127.0.0.1:3020/update";
 
-export function useDiscordRPC() {
-    const rpcWsUrl = process.env.NEXT_PUBLIC_RPC_WS_URL || "ws://127.0.0.1:8080";
-    const wsRef = useRef<WebSocket | null>(null);
-    const lastActionRef = useRef<Action | null>(null);
-    const reconnectTimerRef = useRef<number | null>(null);
-    const reconnectAttemptRef = useRef(0);
-    const isUnmountingRef = useRef(false);
-
-    const clearReconnectTimer = () => {
-        if (reconnectTimerRef.current !== null && typeof window !== "undefined") {
-            window.clearTimeout(reconnectTimerRef.current);
-            reconnectTimerRef.current = null;
-        }
-    };
-
-    const scheduleReconnect = () => {
-        if (isUnmountingRef.current || typeof window === "undefined") return;
-        clearReconnectTimer();
-        const attempt = reconnectAttemptRef.current;
-        const delay = Math.min(10000, 1000 * Math.pow(2, attempt));
-        reconnectAttemptRef.current += 1;
-        reconnectTimerRef.current = window.setTimeout(() => {
-            connect();
-        }, delay);
-    };
-
-    const flushLastAction = (ws: WebSocket) => {
-        if (lastActionRef.current && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(lastActionRef.current));
-        }
-    };
-
-    const connect = () => {
-        if (typeof window === "undefined" || isUnmountingRef.current) return;
-        if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
-            return;
-        }
-
-        try {
-            const ws = new WebSocket(rpcWsUrl);
-
-            ws.onopen = () => {
-                reconnectAttemptRef.current = 0;
-                flushLastAction(ws);
-            };
-
-            ws.onerror = () => {
-                scheduleReconnect();
-            };
-
-            ws.onclose = () => {
-                if (wsRef.current === ws) {
-                    wsRef.current = null;
-                }
-                scheduleReconnect();
-            };
-
-            wsRef.current = ws;
-        } catch {
-            scheduleReconnect();
-        }
-    };
-
-    const sendOrQueue = (payload: Action) => {
-        lastActionRef.current = payload;
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(payload));
-            return;
-        }
-        connect();
-    };
-
+export default function useDiscordRPC() {
     useEffect(() => {
-        isUnmountingRef.current = false;
-        connect();
+        let presenceInterval: NodeJS.Timeout | null = null;
 
+        /**
+         * Saniyeyi HH:MM:SS formatına çevirir
+         */
+        const formatTime = (seconds: number): string => {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+
+            if (h > 0) {
+                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        };
+
+        /**
+         * RPC verisini yerel sunucuya gönderir
+         */
+        const sendPresence = () => {
+            const video = document.querySelector('video');
+
+            // Video yoksa veya duraklatılmışsa işlem yapma
+            if (!video || video.paused) return;
+
+            const rawTitle = document.title;
+            const cleanTitle = rawTitle.replace(/ - RasePlus$/, '').trim();
+
+            const remainingSeconds = Math.floor(video.duration - video.currentTime);
+            const endTime = Math.floor(Date.now() / 1000) + remainingSeconds;
+
+            const state = `İzleniyor · ${formatTime(remainingSeconds)} kaldı`;
+
+            const payload = {
+                title: cleanTitle,
+                state: state,
+                end_time: endTime
+            };
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(() => {
+                // Sessiz hata yönetimi
+            });
+        };
+
+        /**
+         * Video durdurulduğunda RPC'yi sıfırlar
+         */
+        const clearPresence = () => {
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: "",
+                    state: "Duraklatıldı",
+                    end_time: 0
+                })
+            }).catch(() => {});
+        };
+
+        const handlePlay = () => {
+            if (!presenceInterval) {
+                sendPresence(); // Hemen gönder
+                presenceInterval = setInterval(sendPresence, 15000);
+            }
+        };
+
+        const handlePause = () => {
+            if (presenceInterval) {
+                clearInterval(presenceInterval);
+                presenceInterval = null;
+                clearPresence();
+            }
+        };
+
+        const video = document.querySelector('video');
+        if (video) {
+            video.addEventListener('play', handlePlay);
+            video.addEventListener('pause', handlePause);
+
+            // Başlangıç durumu
+            if (!video.paused) {
+                handlePlay();
+            }
+        }
+
+        // Cleanup
         return () => {
-            isUnmountingRef.current = true;
-            clearReconnectTimer();
-            if (wsRef.current) {
-                if (wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({ action: "durdu" }));
-                }
-                wsRef.current.close();
-                wsRef.current = null;
+            if (video) {
+                video.removeEventListener('play', handlePlay);
+                video.removeEventListener('pause', handlePause);
+            }
+            if (presenceInterval) {
+                clearInterval(presenceInterval);
             }
         };
     }, []);
-
-    const sendPlay = (movieName: string, type: string, season?: string | number, episode?: string | number, currentTime?: number, duration?: number) => {
-        const payload: Action = { action: "izliyor", movieName, type, season, episode, currentTime, duration };
-        sendOrQueue(payload);
-    };
-
-    const sendStop = () => {
-        const payload: Action = { action: "durdu" };
-        sendOrQueue(payload);
-    };
-
-    return { onPlay: sendPlay, onPause: sendStop, onEnded: sendStop, sendStop };
 }

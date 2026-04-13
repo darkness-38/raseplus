@@ -6,7 +6,7 @@ import { useStore } from "@/store/useStore";
 import { useAuth } from "@/context/AuthContext";
 import { tmdb } from "@/lib/tmdb";
 import { saveContinueWatching } from "@/lib/profiles";
-import { useDiscordRPC } from "@/hooks/useDiscordRPC";
+import useDiscordRPC from '@/hooks/useDiscordRPC';
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export default function VideoPlayer() {
     const router = useRouter();
     const { user } = useAuth();
     const activeProfile = useStore((s) => s.activeProfile);
-    const { onPlay, sendStop } = useDiscordRPC();
+    useDiscordRPC();
 
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const controlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -52,13 +52,6 @@ export default function VideoPlayer() {
 
     const [imdbId, setImdbId] = useState<string | null>(null);
 
-    // ── Discord RPC ───────────────────────────────────────────────────────────
-    useEffect(() => {
-        if (playerTitle) {
-            onPlay(playerTitle, playerType, playerSeason, playerEpisode);
-        }
-        return () => sendStop();
-    }, [playerTitle, playerType, playerSeason, playerEpisode, onPlay, sendStop]);
 
     // ── Source state ──────────────────────────────────────────────────────────
     // ── TMDB details & continue-watching ─────────────────────────────────────
