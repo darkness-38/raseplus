@@ -1,109 +1,66 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-
-const API_URL = "https://127.0.0.1:3020/update";
+import { useEffect } from 'react';
+import { useSearchParams, usePathname } from 'next/navigation';
 
 export default function useDiscordRPC() {
-    useEffect(() => {
-        let presenceInterval: NodeJS.Timeout | null = null;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-        /**
-         * Saniyeyi HH:MM:SS formatına çevirir
-         */
-        const formatTime = (seconds: number): string => {
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
 
-            if (h > 0) {
-                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            }
-            return `${m}:${s.toString().padStart(2, '0')}`;
-        };
+    const updatePresence = async () => {
+      const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+      if (!apiKey) return;
 
-        /**
-         * RPC verisini yerel sunucuya gönderir
-         */
-        const sendPresence = () => {
-            const video = document.querySelector('video');
+      const videoId = searchParams.get('video_id') || pathname.split('/').pop();
+      const season = searchParams.get('s');
+      const episode = searchParams.get('e');
 
-            // Video yoksa veya duraklatılmışsa işlem yapma
-            if (!video || video.paused) return;
+      if (!videoId || videoId === 'watch') return;
 
-            const rawTitle = document.title;
-            const cleanTitle = rawTitle.replace(/ - RasePlus$/, '').trim();
+      let rpcTitle = "Browsing RasePlus";
+      let rpcState = "Waiting for Video";
 
-            const remainingSeconds = Math.floor(video.duration - video.currentTime);
-            const endTime = Math.floor(Date.now() / 1000) + remainingSeconds;
+      try {
+        if (season && episode) {
+          // Dizi / Anime mantığı (İngilizce)
+          const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${videoId}?api_key=${apiKey}&language=en-US`);
+          const tvData = await tvRes.json();
+          
+          if (tvData.name) {
+            rpcTitle = tvData.name;
+            rpcState = `Season ${season} Episode ${episode}`;
+          }
+        } else {
+          // Film mantığı (İngilizce)
+          const movieRes = await fetch(`https://api.themoviedb.org/3/movie/${videoId}?api_key=${apiKey}&language=en-US`);
+          const movieData = await movieRes.json();
 
-            const state = `İzleniyor · ${formatTime(remainingSeconds)} kaldı`;
-
-            const payload = {
-                title: cleanTitle,
-                state: state,
-                end_time: endTime
-            };
-
-            fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).catch(() => {
-                // Sessiz hata yönetimi
-            });
-        };
-
-        /**
-         * Video durdurulduğunda RPC'yi sıfırlar
-         */
-        const clearPresence = () => {
-            fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: "",
-                    state: "Duraklatıldı",
-                    end_time: 0
-                })
-            }).catch(() => {});
-        };
-
-        const handlePlay = () => {
-            if (!presenceInterval) {
-                sendPresence(); // Hemen gönder
-                presenceInterval = setInterval(sendPresence, 15000);
-            }
-        };
-
-        const handlePause = () => {
-            if (presenceInterval) {
-                clearInterval(presenceInterval);
-                presenceInterval = null;
-                clearPresence();
-            }
-        };
-
-        const video = document.querySelector('video');
-        if (video) {
-            video.addEventListener('play', handlePlay);
-            video.addEventListener('pause', handlePause);
-
-            // Başlangıç durumu
-            if (!video.paused) {
-                handlePlay();
-            }
+          if (movieData.title) {
+            rpcTitle = movieData.title;
+            rpcState = `Movie`;
+          }
         }
 
-        // Cleanup
-        return () => {
-            if (video) {
-                video.removeEventListener('play', handlePlay);
-                video.removeEventListener('pause', handlePause);
-            }
-            if (presenceInterval) {
-                clearInterval(presenceInterval);
-            }
-        };
-    }, []);
+        // Python sunucusuna istek (end_time: 0 göndererek sayacı kapatıyoruz)
+        await fetch("https://127.0.0.1:3020/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: rpcTitle,
+            state: rpcState,
+            end_time: 0 
+          })
+        }).catch(() => {}); 
+
+      } catch (error) {
+        // Hata durumunda sessiz kal
+      }
+    };
+
+    updatePresence();
+    interval = setInterval(updatePresence, 60000);
+
+    return () => clearInterval(interval);
+  }, [pathname, searchParams]);
 }
